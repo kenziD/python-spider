@@ -90,7 +90,6 @@ NewsContent
 python getNewsContent.py r
 ```
 
-<<<<<<< HEAD
 或者
 
 ```
