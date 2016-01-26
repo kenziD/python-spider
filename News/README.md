@@ -46,7 +46,6 @@
 
 	文件结构为：
 
-=======
 * 先运行XueqiuNews.py，
 指令为
 ```
@@ -71,7 +70,7 @@ python getNewsContent.py s
 会根据processtime.txt检测已经爬过的新闻，以便接着上次继续。log记录的日志信息，可以查询某链接失败的原因。每个股票结束后会重新过滤失败的链接
 ，直到两次得到的失败链接数目一致。
 文件结构为：
->>>>>>> bbbeb8d04f56fee9befdffc8898b1bc7554c3f36
+
 ```
 NewsContent
 ----SH000001
