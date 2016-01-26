@@ -466,7 +466,7 @@ class MyThread(threading.Thread):
     def run(self) :
         while True:
             logging.debug( "Starting " + self.name)
-            print "kkkkkk number",threading.activeCount()
+            # print "threading number",threading.activeCount()
             try:
                 link  = self.queue.get(3,True)
             except Queue.Empty:
