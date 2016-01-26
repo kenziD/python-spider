@@ -191,7 +191,6 @@ def readXls():
         stockid_list.append(cell_obj.value)
     #删除前两行
     del stockid_list[0:2]
-    print stockid_list[len(stockid_list)-1]
     #提取第二列中文名字
     for cell_obj in xl_sheet.col(1):
         stockName_list.append(cell_obj.value)
@@ -253,6 +252,7 @@ class JsonParser():
     def parse_process(self,stockId,stockName):
         while True:
             print("###################BEGIN %s####################" %stockName)
+            logger.debug("###################BEGIN %s####################" %stockName)
             global index
             global success
             global fail
@@ -266,11 +266,13 @@ class JsonParser():
             news_json = jsonGetter.get_News_json(stockId,50,1)
             if news_json is None:
                 print("fail to get %s json" % stockName)
+                logger.debug("fail to get %s json" % stockName)
                 if self.outsideRetry>0:
                     print("outsideRetry %s to get %s json" % (self.outsideRetry,stockName))
                 if (self.outsideRetry == 4):
                     self.outsideRetry = 0
                     print("########################END %s####################" %stockName)
+                    logger.debug("########################END %s####################" %stockName)
                     self.xslWriter.close(stockId)
                     break
                 self.outsideRetry = self.outsideRetry + 1
@@ -279,6 +281,7 @@ class JsonParser():
             max_page = decode_news_json['maxPage']
             if max_page == 0:
                 print("##############max_page==0##########END %s####################" %stockName)
+                logger.debug("##############max_page==0##########END %s####################" %stockName)
                 self.xslWriter.close(stockId)
                 break
             for pageIndex in range(1,max_page+1):
@@ -286,18 +289,22 @@ class JsonParser():
                 while True:
                     if(retry>0):
                         print("retry %s to get json %s page %s "%(retry,stockName,pageIndex))
+                        logger.debug("retry %s to get json %s page %s "%(retry,stockName,pageIndex))
                     if (retry == 50):
                         retry = 0
                         print("########################END %s####################" %stockName)
+                        logger.debug("########################END %s####################" %stockName)
                         self.xslWriter.close(stockId)
                         break
                     news_json = jsonGetter.get_News_json(stockId,50, pageIndex)
                     if news_json is None:
                         print("fail to get json %s page %s" % (stockName,pageIndex))
+                        logger.debug("fail to get json %s page %s" % (stockName,pageIndex))
                         retry = retry+1
                         continue
                     decode_news_json = json.loads(news_json)
                     print("success to get json %s page %s" %(stockName,pageIndex))
+                    logger.debug("success to get json %s page %s" %(stockName,pageIndex))
                     for item in decode_news_json['list']:
                         title = item['title']
                         logger.debug( title)
@@ -310,6 +317,7 @@ class JsonParser():
                         YMD = formateTime[0:10].replace("-","")
                         # logger.debug(YMD)
                         TIME = formateTime[10:19].replace(":","")
+
                         # logger.debug(TIME)
                         text = item['text']
                         if text is None:
@@ -329,6 +337,7 @@ class JsonParser():
                         row = row+1
                     break
             print("########################END %s####################" %stockName)
+            logger.debug("########################END %s####################" %stockName)
             self.xslWriter.close(stockId)
             break
 
@@ -336,7 +345,6 @@ class ParseStockId(object):
     """docstring for getStockId"""
     def __init__(self):
         self.stockNameId_dict =  readXls()
-
         self.tsk = []
     def passID(self):
         queue = Queue.Queue()
@@ -381,7 +389,7 @@ if __name__ == '__main__':
     fileEmpty_old = []
     i = 0
     while True:
-        print( "Time %s"%i)
+        logger.info( "Time %s"%i)
         parseStockId = ParseStockId()
         parseStockId.passID()
         fileEmpty = []
@@ -389,13 +397,17 @@ if __name__ == '__main__':
         for filename in fn:
             if os.stat('NewsLinkText/%s'%filename).st_size/1024.0<7:
                 print( ('empty file is %s'%filename))
+                logger.debug( ('empty file is %s'%filename))
                 fileEmpty.append(filename)
         if len(fileEmpty) == len(fileEmpty_old):
             print( u"与上一次产生的空文件数目一致，程序结束")
+            logger.debug( u"与上一次产生的空文件数目一致，程序结束")
             break
         for filename in fileEmpty:
             print( "remove %s"%filename)
+            logger.debug( "remove %s"%filename)
             os.remove('NewsLinkText/%s'%filename)
         fileEmpty_old = fileEmpty
         print( "AGAIN %s"%i)
+        logger.debug( "AGAIN %s"%i)
         i = i+1

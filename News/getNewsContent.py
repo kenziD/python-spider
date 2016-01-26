@@ -40,6 +40,7 @@ logger.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(threadName)s - %(message)s')
 
+
 # 在命令行的是INFO级别
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -51,7 +52,6 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 index = 1
 fail = 1
 success = 1
-
 
 # 读某股票的xls文件 把xls整合成字典
 # 格式：{"link":["title","text","id","TimeStamp"],}
@@ -346,7 +346,6 @@ def processTimeSave(stockID,timeStamp):
         f.close()
         logger.debug("process link save over:%s"%index)
 
-
 # 失败
 def FAIL(stockID,link,cause,timeStamp,oldlink=None):
     global index
@@ -449,9 +448,7 @@ class ParseStockId(object):
             t.start()
         for i in self.link_TitleTextIdTime_dict:
             queue.put(i)
-
         queue.join()
-
 
 
 #一个线程
@@ -492,7 +489,6 @@ class MyThread(threading.Thread):
                     logging.debug( "Exiting " + self.name)
                 print " "
 
-
 def getStcokIdNeed(fileName):
     for i in os.listdir(fileName):
         fn = i[0:8]
@@ -528,15 +524,15 @@ class Main():
         f.close()
         processTimeList.sort(reverse = True)
         return processTimeList
+
     def getBadLinkList(self,folderName):
         badLinkList = []
-        f = codecs.open("NewsContent/%s/badlink.txt"%folderName,'r','utf-8')
+        f = open("NewsContent/%s/badlink.txt"%folderName,'r')
         for line in f:
             badLinkList.append(line.rstrip())
         f.close()
         return badLinkList
 
-    
     def getContinueDict(self,processTimeList,oldDict):
         for k,v in oldDict.items():
             if any(s in v for s in processTimeList):
@@ -634,6 +630,7 @@ class Main():
                 else:
                     break
             logger.removeHandler(fh)
+
 
 
 if __name__ == '__main__':

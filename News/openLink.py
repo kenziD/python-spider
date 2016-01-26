@@ -1,7 +1,9 @@
 # coding=utf-8
 """
+
 功能:在chrome浏览器中打开NewsContent/stock_id/badlink.txt中的失败链接。
 -------------
+
 Author:kenziD
 
 """
@@ -13,8 +15,6 @@ num = sys.argv[2]
 numList = num.split("-")
 fromIndex = int(numList[0])
 toIndex = int(numList[1])
-print fromIndex
-print toIndex
 badLinkList = []
 if os.path.isfile("NewsContent/%s/badlink.txt"%value):
     with open("NewsContent/%s/badlink.txt"%value,'r') as f:
