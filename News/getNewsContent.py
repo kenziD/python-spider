@@ -95,9 +95,9 @@ def read(fileName):
 
 
 # 有一些链接是.pdf
-def getPdf(url,folderName,timeStamp):
+def getPdf(url,folderName,message_id):
     r = requests.get(url)
-    with open("NewsContent/%s/%s.pdf"%(folderName,timeStamp),'wb') as f:
+    with open("NewsContent/%s/%s.pdf"%(folderName,message_id),'wb') as f:
         f.write(r.content)
 
 
@@ -389,7 +389,7 @@ def SUCCESS(stockID,link,timeStamp,oldlink = None):
 def MainProcess(link,text,title,folderName,message_id,timeStamp,oldlink=None):
     logger.debug("link is %s" %link)
     if ".pdf" in link:
-        getPdf(link,folderName,timeStamp)
+        getPdf(link,folderName,message_id)
         SUCCESS(folderName,link,timeStamp,oldlink)
         return
     newsHtml= getNewsHtml(link)
