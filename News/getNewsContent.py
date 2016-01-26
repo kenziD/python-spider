@@ -540,7 +540,15 @@ class Main():
 
     # 重新过滤失败链接
     def retry(self,stockIDlist):
+        global index
+        global success
+        global fail
         for folderName in stockIDlist:
+            dt = time.strftime(format,time.localtime())
+            fh = logging.FileHandler('NewsContent'+'/'+folderName+'/'+dt+'.log')
+            fh.setLevel(logging.DEBUG)
+            fh.setFormatter(formatter)
+            logger.addHandler(fh)
             index = 1
             success = 1
             fail = 1
@@ -556,8 +564,8 @@ class Main():
                 parseStockId = ParseStockId(folderName,badlinkDict)
                 parseStockId.passID()
             else:
-                logger.info("%s没有badlink文件"%folderName)
-                return
+                logger.info(u"%s没有badlink文件"%folderName)
+            logger.removeHandler(fh)
 
 
     # 开始程序
