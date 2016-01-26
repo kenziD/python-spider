@@ -251,8 +251,8 @@ class JsonParser():
     # 主程序
     def parse_process(self,stockId,stockName):
         while True:
-            print("###################BEGIN %s####################" %stockName)
-            logger.debug("###################BEGIN %s####################" %stockName)
+            # print("###################BEGIN %s####################" %stockName)
+            logger.info(u"###################BEGIN %s####################" %stockName)
             global index
             global success
             global fail
@@ -265,14 +265,15 @@ class JsonParser():
             jsonGetter = JsonGetter()
             news_json = jsonGetter.get_News_json(stockId,50,1)
             if news_json is None:
-                print("fail to get %s json" % stockName)
-                logger.debug("fail to get %s json" % stockName)
+                # print("fail to get %s json" % stockName)
+                logger.info(u"fail to get %s json" % stockName)
                 if self.outsideRetry>0:
-                    print("outsideRetry %s to get %s json" % (self.outsideRetry,stockName))
+                    # print("outsideRetry %s to get %s json" % (self.outsideRetry,stockName))
+                    logger.info(u"outsideRetry %s to get %s json" % (self.outsideRetry,stockName))
                 if (self.outsideRetry == 4):
                     self.outsideRetry = 0
-                    print("########################END %s####################" %stockName)
-                    logger.debug("########################END %s####################" %stockName)
+                    # print("########################END %s####################" %stockName)
+                    logger.info(u"########################END %s####################" %stockName)
                     self.xslWriter.close(stockId)
                     break
                 self.outsideRetry = self.outsideRetry + 1
@@ -280,31 +281,31 @@ class JsonParser():
             decode_news_json = json.loads(news_json)
             max_page = decode_news_json['maxPage']
             if max_page == 0:
-                print("##############max_page==0##########END %s####################" %stockName)
-                logger.debug("##############max_page==0##########END %s####################" %stockName)
+                # print("##############max_page==0##########END %s####################" %stockName)
+                logger.info(u"##############max_page==0##########END %s####################" %stockName)
                 self.xslWriter.close(stockId)
                 break
             for pageIndex in range(1,max_page+1):
                 retry = 0
                 while True:
                     if(retry>0):
-                        print("retry %s to get json %s page %s "%(retry,stockName,pageIndex))
-                        logger.debug("retry %s to get json %s page %s "%(retry,stockName,pageIndex))
+                        # print("retry %s to get json %s page %s "%(retry,stockName,pageIndex))
+                        logger.info(u"retry %s to get json %s page %s "%(retry,stockName,pageIndex))
                     if (retry == 50):
                         retry = 0
-                        print("########################END %s####################" %stockName)
-                        logger.debug("########################END %s####################" %stockName)
+                        # print("########################END %s####################" %stockName)
+                        logger.info(u"########################END %s####################" %stockName)
                         self.xslWriter.close(stockId)
                         break
                     news_json = jsonGetter.get_News_json(stockId,50, pageIndex)
                     if news_json is None:
-                        print("fail to get json %s page %s" % (stockName,pageIndex))
-                        logger.debug("fail to get json %s page %s" % (stockName,pageIndex))
+                        # print("fail to get json %s page %s" % (stockName,pageIndex))
+                        logger.info(u"fail to get json %s page %s" % (stockName,pageIndex))
                         retry = retry+1
                         continue
                     decode_news_json = json.loads(news_json)
-                    print("success to get json %s page %s" %(stockName,pageIndex))
-                    logger.debug("success to get json %s page %s" %(stockName,pageIndex))
+                    # print("success to get json %s page %s" %(stockName,pageIndex))
+                    logger.info(u"success to get json %s page %s" %(stockName,pageIndex))
                     for item in decode_news_json['list']:
                         title = item['title']
                         logger.debug( title)
@@ -336,8 +337,8 @@ class JsonParser():
                         # self.xslWriter.write(row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,message_id,target_url,timeStamp)
                         row = row+1
                     break
-            print("########################END %s####################" %stockName)
-            logger.debug("########################END %s####################" %stockName)
+            # print("########################END %s####################" %stockName)
+            logger.info(u"########################END %s####################" %stockName)
             self.xslWriter.close(stockId)
             break
 
@@ -374,13 +375,13 @@ class MyThread(threading.Thread):
 
     def run(self) :
         while True:
-            logging.info( "Starting " + self.name)
+            logging.debug( "Starting " + self.name)
             stockName  = self.queue.get()
             stockId = self.stockNameId_dict[stockName]
             jsonParser = JsonParser()
             jsonParser.parse_process(stockId,stockName)
             self.queue.task_done()
-            logging.info( "Exiting " + self.name)
+            logging.debug( "Exiting " + self.name)
 
 if __name__ == '__main__':
     new = 0
@@ -389,25 +390,24 @@ if __name__ == '__main__':
     fileEmpty_old = []
     i = 0
     while True:
-        logger.info( "Time %s"%i)
         parseStockId = ParseStockId()
         parseStockId.passID()
         fileEmpty = []
         fn = os.listdir('.\NewsLinkText')
         for filename in fn:
             if os.stat('NewsLinkText/%s'%filename).st_size/1024.0<7:
-                print( ('empty file is %s'%filename))
-                logger.debug( ('empty file is %s'%filename))
+                # print ('empty file is %s'%filename)
+                logger.info(u'empty file is %s'%filename)
                 fileEmpty.append(filename)
         if len(fileEmpty) == len(fileEmpty_old):
-            print( u"与上一次产生的空文件数目一致，程序结束")
-            logger.debug( u"与上一次产生的空文件数目一致，程序结束")
+            # print( u"与上一次产生的空文件数目一致，程序结束")
+            logger.info( u"与上一次产生的空文件数目一致，程序结束")
             break
         for filename in fileEmpty:
-            print( "remove %s"%filename)
-            logger.debug( "remove %s"%filename)
+            # print( "remove %s"%filename)
+            logger.info( u"remove %s"%filename)
             os.remove('NewsLinkText/%s'%filename)
         fileEmpty_old = fileEmpty
-        print( "AGAIN %s"%i)
-        logger.debug( "AGAIN %s"%i)
+        # print( "AGAIN %s"%i)
+        logger.info( u"AGAIN %s"%i)
         i = i+1
