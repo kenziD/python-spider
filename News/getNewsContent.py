@@ -477,7 +477,6 @@ class MyThread(threading.Thread):
                 text = self.link_TitleTextIdTime_dict[link][1]
                 title = self.link_TitleTextIdTime_dict[link][0]
                 message_id = str(self.link_TitleTextIdTime_dict[link][2])[0:8]
-                print message_id
                 timeStamp = self.link_TitleTextIdTime_dict[link][3]
                 try:
                     MainProcess(link,text,title,self.folderName,message_id,timeStamp)
@@ -501,7 +500,7 @@ def getStcokIdinNewsContent():
     NewsContentList = []
     for i in os.listdir('NewsContent'):
         fn = i[0:8]
-        print fn
+        # print fn
         if not fn.startswith('.'):
             NewsContentList.append(fn)
     return NewsContentList
