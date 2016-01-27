@@ -142,7 +142,7 @@ class XslWriter(object):
     #写表头
     def creat(self):
         self.ws.write(0,0,u'StockName')
-        self.ws.write(0,1,u'StockId')
+        self.ws.write(0,1,u'Code')
         self.ws.write(0,2,u'Date')
         self.ws.write(0,3,u'Time')
         self.ws.write(0,4,u'Forward')
