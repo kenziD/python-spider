@@ -1,20 +1,5 @@
 # coding=utf-8
-"""
-Function: 爬取雪球网新闻链接v0.1
-Author: KenziD
 
-运行要求：
-1. 安装处理工具包(pip install lxml pyExcelerator xlrd chardet)。
-2. 本程序路径最好不要有中文。
-3. 在控制台中运行 python XueqiuNews.py。
-3. 程序运行结束将在输出文件夹NewsLink保存相关股票表格。表格中是此股票包含的新闻链接。
-4. 运行过程中的日志信息保存在log文件夹内。级别为DEBUG级别。
-5. 如果程序卡了，直接关掉。重新运行，程序会在NewsLink文件夹内自检已经爬过的股票，接着上面断掉的程序爬。
-6. 命令行的日志信息为INFO级别，将INFO改为DEBUG可看到更多输出信息，便于调试程序。也可以在程序运行完成后直接在log日志中查看。
-
-7. 修改了获取新闻链接的规则
-8. 增加了自动重新获取空文件
-"""
 import urllib2
 import urllib
 import cookielib
@@ -32,12 +17,34 @@ import threading
 import Queue
 import os
 from collections import OrderedDict
+"""
+Function: 爬取雪球网新闻链接v0.1
+Author: KenziD
+
+运行要求：
+1. 安装处理工具包(pip install lxml pyExcelerator xlrd chardet)。
+2. 本程序路径最好不要有中文。
+3. 在控制台中运行 python XueqiuNews.py。
+3. 程序运行结束将在输出文件夹NewsLink保存相关股票表格。表格中是此股票包含的新闻链接。
+4. 运行过程中的日志信息保存在log文件夹内。级别为DEBUG级别。
+5. 如果程序卡了，直接关掉。重新运行，程序会在NewsLink文件夹内自检已经爬过的股票，接着上面断掉的程序爬。
+6. 命令行的日志信息为INFO级别，将INFO改为DEBUG可看到更多输出信息，便于调试程序。也可以在程序运行完成后直接在log日志中查看。
+
+7. 修改了获取新闻链接的规则
+8. 增加了自动重新获取空文件
+"""
+
+# 验证文件夹是否存在 不存在则创建
+def checkDir(folder):
+    if os.path.isdir(folder):
+        pass
+    else:
+        os.mkdir(folder)
 
 #将新闻链接放在NewsLink文件夹中
-if os.path.isdir('NewsLinkText'):
-    pass
-else:
-    os.mkdir('NewsLinkText')
+checkDir("NewsLinkText")
+
+
 
 socket.setdefaulttimeout(10) #设置10秒后连接超时
 format = '%Y-%m-%d-%H-%M-%S'
@@ -50,10 +57,7 @@ logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
 # 将日志放在log文件夹里
-if os.path.isdir('log'):
-    pass
-else:
-    os.mkdir('log')
+checkDir("log")
 
 
 #写入文件的是DEBUG级别
@@ -73,18 +77,14 @@ logger.addHandler(ch)
 userAgent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
 headers = {
         'User-Agent': userAgent
-    }
-index = 0
-fail = 0
-success = 0
+}
+
 
 # 时间戳转换函数
 def timestamp_datetime(value):
-    format = '%Y-%m-%d %H:%M:%S'
+    format = '%Y%m%d %H%M%S'
     # value为传入的值为时间戳(整形)，如：1332888820
     value = time.localtime(value)
-    ## 经过localtime转换后变成
-    ## time.struct_time(tm_year=2012, tm_mon=3, tm_mday=28, tm_hour=6, tm_min=53, tm_sec=40, tm_wday=2, tm_yday=88, tm_isdst=0)
     # 最后再经过strftime函数转换为正常日期格式。
     dt = time.strftime(format, value)
     return dt
@@ -93,6 +93,8 @@ def timestamp_datetime(value):
 # http://xueqiu.com/statuses/stock_timeline.json?symbol_id=SZ002161&count=15&page=1&source=自选股新闻
 class JsonGetter(object):
     """docstring for JsonGetter"""
+
+
     #先打开雪球网主页获取并保存cookie，后面的程序都使用这个cookie
     def __init__(self):
         filename = 'cookie.txt'
@@ -104,6 +106,7 @@ class JsonGetter(object):
         r = urllib2.urlopen(req)
         cookie.save(ignore_discard=True, ignore_expires=True)
         req = urllib2.Request(url, headers=headers)
+
     #拼接完整的json链接
     def news_url_param(self,url,stockId, count, page):
         param = {}
@@ -116,6 +119,7 @@ class JsonGetter(object):
         geturl = url + "?" + data
         logger.debug(geturl)
         return geturl
+
     #通过上面拼接好的链接获取新闻json
     def get_News_json(self,stockId,count, page):
         url = 'http://xueqiu.com/statuses/stock_timeline.json'
@@ -135,10 +139,13 @@ class JsonGetter(object):
 #写NewsLink xsl
 class XslWriter(object):
     """docstring for XslWriter"""  
+
+
     #创建表格文件 
     def __init__(self):
         self.w = Workbook() 
         self.ws = self.w.add_sheet('Hey, XueqiuNews')
+
     #写表头
     def creat(self):
         self.ws.write(0,0,u'StockName')
@@ -158,6 +165,7 @@ class XslWriter(object):
     def writeStockIdName(self,row,stockId,stockName):
         self.ws.write(row,0,stockName)
         self.ws.write(row,1,stockId)
+
     #写表格主体
     def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,timeStamp):
     # def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink):
@@ -216,15 +224,19 @@ def readXls():
     return stockNameId_dict
 
 class JsonParser():
+
+
     # 每一个股票都创建一个表格
     def __init__(self):
         self.xslWriter = XslWriter()
         self.xslWriter.creat()
         self.outsideRetry = 0
+
     # http://xueqiu.com/S/SZ002161/63362440每个新闻都有一个单独的id页面
     def get_target_url(self,target):
         target_url = "http://xueqiu.com"+str(target)
         return target_url
+
     # 正则匹配 从json里获取新闻的链接
     def get_news_link(self,newsText):
         pattern = re.compile(r'.*?href="(.*?)"')
@@ -253,9 +265,7 @@ class JsonParser():
         while True:
             # print("###################BEGIN %s####################" %stockName)
             logger.info(u"###################BEGIN %s####################" %stockName)
-            global index
-            global success
-            global fail
+            
             # global row
             row=1
             logger.debug("stockName %s" % stockName)
@@ -315,9 +325,9 @@ class JsonParser():
                         # logger.debug(timeStamp)
                         formateTime = timestamp_datetime(long(str(timeStamp)[0:10]))
                         # logger.debug(formateTime)
-                        YMD = formateTime[0:10].replace("-","")
+                        YMD = formateTime[0:8]
                         # logger.debug(YMD)
-                        TIME = formateTime[10:19].replace(":","")
+                        TIME = formateTime[9:15]
 
                         # logger.debug(TIME)
                         text = item['text']
@@ -343,10 +353,13 @@ class JsonParser():
             break
 
 class ParseStockId(object):
+
+
     """docstring for getStockId"""
     def __init__(self):
         self.stockNameId_dict =  readXls()
         self.tsk = []
+
     def passID(self):
         queue = Queue.Queue()
         #开启5个线程
@@ -364,6 +377,7 @@ class ParseStockId(object):
 #继承Threading类
 class MyThread(threading.Thread):
     """docstring for MyThread"""
+
 
     def __init__(self, thread_id, name,queue,dic) :
         super(MyThread, self).__init__()  #调用父类的构造函数 
