@@ -10,12 +10,13 @@ from lxml import etree
 import chardet
 import codecs
 import logging
-from pyExcelerator import *
+# from pyExcelerator import *
 import xlrd
 import socket
 import threading
 import Queue
 import os
+import xlwt
 from collections import OrderedDict
 """
 Function: 爬取雪球网新闻链接v0.1
@@ -143,7 +144,7 @@ class XslWriter(object):
 
     #创建表格文件 
     def __init__(self):
-        self.w = Workbook() 
+        self.w = xlwt.Workbook() 
         self.ws = self.w.add_sheet('Hey, XueqiuNews')
 
     #写表头
@@ -163,22 +164,29 @@ class XslWriter(object):
 
     #写表格前两列
     def writeStockIdName(self,row,stockId,stockName):
-        self.ws.write(row,0,stockName)
-        self.ws.write(row,1,stockId)
+        try:
+            print "pppppppppppppppppp STOCKID:%sROW%s"%(stockId,row)
+            self.ws.write(row,0,stockName)
+            self.ws.write(row,1,stockId)
+        except Exception,e:
+            raise
 
     #写表格主体
     def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,timeStamp):
     # def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink):
-        self.ws.write(row,2,YMD)
-        self.ws.write(row,3,TIME)
-        self.ws.write(row,4,retweet_count)
-        self.ws.write(row,5,reply_count)
-        self.ws.write(row,6,title)
-        self.ws.write(row,7,targetNewsLink)
-        self.ws.write(row,8,text)
-        self.ws.write(row,9,message_id)
-        self.ws.write(row,10,target_url)
-        self.ws.write(row,11,timeStamp)
+        try:
+            self.ws.write(row,2,YMD)
+            self.ws.write(row,3,TIME)
+            self.ws.write(row,4,retweet_count)
+            self.ws.write(row,5,reply_count)
+            self.ws.write(row,6,title)
+            self.ws.write(row,7,targetNewsLink)
+            self.ws.write(row,8,text)
+            self.ws.write(row,9,message_id)
+            self.ws.write(row,10,target_url)
+            self.ws.write(row,11,timeStamp)
+        except Exception,e:
+            raise
 
     # 保存表格
     def close(self,name):
@@ -262,15 +270,16 @@ class JsonParser():
 
     # 主程序
     def parse_process(self,stockId,stockName):
+        # print("###################BEGIN %s####################" %stockName)
+        logger.info(u"###################BEGIN %s####################" %stockName)
+        
+        # global row
+        row=1
+        logger.debug("stockName %s" % stockName)
+        logger.debug("stockId %s" %stockId)
+        self.xslWriter.writeStockIdName(row,stockId,stockName)
         while True:
-            # print("###################BEGIN %s####################" %stockName)
-            logger.info(u"###################BEGIN %s####################" %stockName)
-            
-            # global row
-            row=1
-            logger.debug("stockName %s" % stockName)
-            logger.debug("stockId %s" %stockId)
-            self.xslWriter.writeStockIdName(row,stockId,stockName)
+
             #实例化
             jsonGetter = JsonGetter()
             news_json = jsonGetter.get_News_json(stockId,50,1)
