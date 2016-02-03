@@ -162,19 +162,13 @@ class XslWriter(object):
         self.ws.write(0,10,u'MessageLink')
         self.ws.write(0,11,u'TimeStamp')
 
-    #写表格前两列
-    def writeStockIdName(self,row,stockId,stockName):
-        try:
-            print "pppppppppppppppppp STOCKID:%sROW%s"%(stockId,row)
-            self.ws.write(row,0,stockName)
-            self.ws.write(row,1,stockId)
-        except Exception,e:
-            raise
 
     #写表格主体
-    def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,timeStamp):
+    def write(self,row,stockId,stockName,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,timeStamp):
     # def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink):
         try:
+            self.ws.write(row,0,stockName)
+            self.ws.write(row,1,stockId)
             self.ws.write(row,2,YMD)
             self.ws.write(row,3,TIME)
             self.ws.write(row,4,retweet_count)
@@ -277,7 +271,6 @@ class JsonParser():
         row=1
         logger.debug("stockName %s" % stockName)
         logger.debug("stockId %s" %stockId)
-        self.xslWriter.writeStockIdName(row,stockId,stockName)
         while True:
 
             #实例化
@@ -352,7 +345,7 @@ class JsonParser():
                         message_id = item['id']
                         target = item['target']
                         target_url = self.get_target_url(target)
-                        self.xslWriter.write(row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,str(timeStamp))
+                        self.xslWriter.write(row,stockId,stockName,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,str(timeStamp))
                         # self.xslWriter.write(row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,message_id,target_url,timeStamp)
                         row = row+1
                     break
