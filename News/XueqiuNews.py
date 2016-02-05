@@ -10,7 +10,6 @@ from lxml import etree
 import chardet
 import codecs
 import logging
-# from pyExcelerator import *
 import xlrd
 import socket
 import threading
@@ -18,6 +17,7 @@ import Queue
 import os
 import xlwt
 from collections import OrderedDict
+from xlutils.copy import copy
 """
 Function: 爬取雪球网新闻链接v0.1
 Author: KenziD
@@ -143,10 +143,17 @@ class XslWriter(object):
 
 
     #创建表格文件 
-    def __init__(self):
-        self.w = xlwt.Workbook() 
-        self.ws = self.w.add_sheet('Hey, XueqiuNews')
-
+    #创建表格文件 
+    def __init__(self,stockId):
+        self.stockId = stockId
+        self.style = xlwt.easyxf('font: colour red' )
+        if os.path.isfile("NewsLinkText/%s.xls"%self.stockId):
+            xl_workbook = xlrd.open_workbook("NewsLinkText/%s.xls"%self.stockId)
+            self.w = copy(xl_workbook)
+            self.ws = self.w.get_sheet(0)
+        else:
+            self.w = xlwt.Workbook() 
+            self.ws = self.w.add_sheet('Hey, XueqiuNews')
     #写表头
     def creat(self):
         self.ws.write(0,0,u'StockName')
@@ -167,25 +174,40 @@ class XslWriter(object):
     def write(self,row,stockId,stockName,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,timeStamp):
     # def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink):
         try:
-            self.ws.write(row,0,stockName)
-            self.ws.write(row,1,stockId)
-            self.ws.write(row,2,YMD)
-            self.ws.write(row,3,TIME)
-            self.ws.write(row,4,retweet_count)
-            self.ws.write(row,5,reply_count)
-            self.ws.write(row,6,title)
-            self.ws.write(row,7,targetNewsLink)
-            self.ws.write(row,8,text)
-            self.ws.write(row,9,message_id)
-            self.ws.write(row,10,target_url)
-            self.ws.write(row,11,timeStamp)
+            self.ws.write(row,0,stockName,self.style)
+            self.ws.write(row,1,stockId,self.style)
+            self.ws.write(row,2,YMD,self.style)
+            self.ws.write(row,3,TIME,self.style)
+            self.ws.write(row,4,retweet_count,self.style)
+            self.ws.write(row,5,reply_count,self.style)
+            self.ws.write(row,6,title,self.style)
+            self.ws.write(row,7,targetNewsLink,self.style)
+            self.ws.write(row,8,text,self.style)
+            self.ws.write(row,9,message_id,self.style)
+            self.ws.write(row,10,target_url,self.style)
+            self.ws.write(row,11,timeStamp,self.style)
         except Exception,e:
             raise
 
     # 保存表格
     def close(self,name):
         self.w.save('%s/%s.xls'%('NewsLinkText',name))     #保存
+class FoundTimeStamp( Exception ):
+    pass
+def read(fileName):
+    xl_workbook = xlrd.open_workbook("NewsLinkText/%s.xls"%fileName)
+    sheet_names = xl_workbook.sheet_names()
+    xl_sheet = xl_workbook.sheet_by_name(sheet_names[0])
+    nrows = xl_sheet.nrows
+    timeList = []
+    for cell_obj in xl_sheet.col(11):
+        timeList.append(cell_obj.value)
 
+    del timeList[0:1]
+    timeList.sort(reverse = True)
+    if len(timeList)==0:
+        return 0,0
+    return timeList[0],nrows
 #读stock表格
 def readXls():
     # Open the workbook
@@ -219,19 +241,27 @@ def readXls():
     stockid_list = [''.join(item) for item in zip(code,stockid_list)]
     # {"大东海B":ZH200613}
     stockNameId_dict = OrderedDict(zip(stockName_list,stockid_list))
-    fn = os.listdir('NewsLinkText')
-    for k,v in stockNameId_dict.items():
-        if any(v in s for s in fn):
-                stockNameId_dict.pop(k)
+    # fn = os.listdir('NewsLinkText')
+    # for k,v in stockNameId_dict.items():
+    #     if any(v in s for s in fn):
+    #             stockNameId_dict.pop(k)
     return stockNameId_dict
 
 class JsonParser():
 
 
     # 每一个股票都创建一个表格
-    def __init__(self):
-        self.xslWriter = XslWriter()
-        self.xslWriter.creat()
+    def __init__(self,stockId):
+        self.stockId = stockId
+        self.xslWriter = XslWriter(self.stockId)
+        self.haveXsl = False
+        if os.path.isfile("NewsLinkText/%s.xls"%self.stockId):
+            self.newestTimeStamp,self.row = read(self.stockId)
+            logger.info( "there already have %s.xls checking...."%self.stockId)
+            self.haveXsl = True
+        else:
+            self.row = 1
+            self.xslWriter.creat()
         self.outsideRetry = 0
 
     # http://xueqiu.com/S/SZ002161/63362440每个新闻都有一个单独的id页面
@@ -264,95 +294,116 @@ class JsonParser():
 
     # 主程序
     def parse_process(self,stockId,stockName):
-        # print("###################BEGIN %s####################" %stockName)
-        logger.info(u"###################BEGIN %s####################" %stockName)
-        
-        # global row
-        row=1
-        logger.debug("stockName %s" % stockName)
-        logger.debug("stockId %s" %stockId)
-        while True:
-
-            #实例化
-            jsonGetter = JsonGetter()
-            news_json = jsonGetter.get_News_json(stockId,50,1)
-            if news_json is None:
-                # print("fail to get %s json" % stockName)
-                logger.info(u"fail to get %s json" % stockName)
-                if self.outsideRetry>0:
-                    # print("outsideRetry %s to get %s json" % (self.outsideRetry,stockName))
-                    logger.info(u"outsideRetry %s to get %s json" % (self.outsideRetry,stockName))
-                if (self.outsideRetry == 4):
-                    self.outsideRetry = 0
-                    # print("########################END %s####################" %stockName)
-                    logger.info(u"########################END %s####################" %stockName)
-                    self.xslWriter.close(stockId)
-                    break
-                self.outsideRetry = self.outsideRetry + 1
-                continue
-            decode_news_json = json.loads(news_json)
-            max_page = decode_news_json['maxPage']
-            if max_page == 0:
-                # print("##############max_page==0##########END %s####################" %stockName)
-                logger.info(u"##############max_page==0##########END %s####################" %stockName)
-                self.xslWriter.close(stockId)
-                break
-            for pageIndex in range(1,max_page+1):
-                retry = 0
-                while True:
-                    if(retry>0):
-                        # print("retry %s to get json %s page %s "%(retry,stockName,pageIndex))
-                        logger.info(u"retry %s to get json %s page %s "%(retry,stockName,pageIndex))
-                    if (retry == 50):
-                        retry = 0
-                        # print("########################END %s####################" %stockName)
-                        logger.info(u"########################END %s####################" %stockName)
+        try:
+            # print("###################BEGIN %s####################" %stockId)
+            logger.info(u"###################BEGIN %s####################" %stockId)
+            logger.debug("stockName %s" % stockId)
+            logger.debug("stockId %s" %stockId)
+            while True:
+                #实例化
+                jsonGetter = JsonGetter()
+                news_json = jsonGetter.get_News_json(stockId,50,1)
+                if news_json is None:
+                    # print("fail to get %s json" % stockId)
+                    logger.info(u"fail to get %s json" % stockId)
+                    if self.outsideRetry>0:
+                        # print("outsideRetry %s to get %s json" % (self.outsideRetry,stockId))
+                        logger.info(u"outsideRetry %s to get %s json" % (self.outsideRetry,stockId))
+                    if (self.outsideRetry == 4):
+                        self.outsideRetry = 0
+                        # print("########################END %s####################" %stockId)
+                        logger.info(u"########################END %s####################" %stockId)
                         self.xslWriter.close(stockId)
                         break
-                    news_json = jsonGetter.get_News_json(stockId,50, pageIndex)
-                    if news_json is None:
-                        # print("fail to get json %s page %s" % (stockName,pageIndex))
-                        logger.info(u"fail to get json %s page %s" % (stockName,pageIndex))
-                        retry = retry+1
-                        continue
-                    decode_news_json = json.loads(news_json)
-                    # print("success to get json %s page %s" %(stockName,pageIndex))
-                    logger.info(u"success to get json %s page %s" %(stockName,pageIndex))
-                    for item in decode_news_json['list']:
-                        title = item['title']
-                        logger.debug( title)
-                        if title is None:
-                            title = "None"
-                        timeStamp = item['created_at']
-                        # logger.debug(timeStamp)
-                        formateTime = timestamp_datetime(long(str(timeStamp)[0:10]))
-                        # logger.debug(formateTime)
-                        YMD = formateTime[0:8]
-                        # logger.debug(YMD)
-                        TIME = formateTime[9:15]
-
-                        # logger.debug(TIME)
-                        text = item['text']
-                        if text is None:
-                            text = "None"
-                        targetNewsLink = self.get_news_link(text)
-                        if targetNewsLink is None:
-                            targetNewsLink = "None"
-                        retweet_count = item['retweet_count']
-                        # logger.debug(retweet_count)
-                        reply_count = item['reply_count']
-                        # logger.debug(reply_count)
-                        message_id = item['id']
-                        target = item['target']
-                        target_url = self.get_target_url(target)
-                        self.xslWriter.write(row,stockId,stockName,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,str(timeStamp))
-                        # self.xslWriter.write(row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,message_id,target_url,timeStamp)
-                        row = row+1
+                    self.outsideRetry = self.outsideRetry + 1
+                    continue
+                decode_news_json = json.loads(news_json)
+                max_page = decode_news_json['maxPage']
+                if max_page == 0:
+                    # print("##############max_page==0##########END %s####################" %stockId)
+                    logger.info(u"##############max_page==0##########END %s####################" %stockId)
+                    self.xslWriter.close(stockId)
                     break
-            # print("########################END %s####################" %stockName)
-            logger.info(u"########################END %s####################" %stockName)
+                i =0
+                for pageIndex in range(1,max_page+1):
+                    
+                    retry = 0
+                    while True:
+                        if(retry>0):
+                            # print("retry %s to get json %s page %s "%(retry,stockId,pageIndex))
+                            logger.info(u"retry %s to get json %s page %s "%(retry,stockId,pageIndex))
+                        if (retry == 50):
+                            retry = 0
+                            # print("########################END %s####################" %stockId)
+                            logger.info(u"########################END %s####################" %stockId)
+                            self.xslWriter.close(stockId)
+                            break
+                        news_json = jsonGetter.get_News_json(stockId,50, pageIndex)
+                        if news_json is None:
+                            # print("fail to get json %s page %s" % (stockId,pageIndex))
+                            logger.info(u"fail to get json %s page %s" % (stockId,pageIndex))
+                            retry = retry+1
+                            continue
+                        decode_news_json = json.loads(news_json)
+                        # print("success to get json %s page %s" %(stockId,pageIndex))
+                        logger.info(u"success to get json %s page %s" %(stockId,pageIndex))
+                        
+                        
+                        # for item in decode_news_json['list']:
+                        #     timeStamp = item['created_at']
+                        for item in decode_news_json['list']:
+                            i = i+1
+                            timeStamp = item['created_at']
+                            logger.debug( timeStamp)
+                            # logger.debug(timeStamp)
+                            if self.haveXsl:
+                                # print "newestTimeStamp:",newestTimeStamp
+                                # print "timeStamp:",timeStamp
+                                if int(timeStamp) == int(self.newestTimeStamp):
+                                    logger.debug( "%s found timeStamp"%stockId)
+                                    if i == 1:
+                                        logger.info( "%s already newest"%stockId)
+                                    raise FoundTimeStamp
+                            # else:
+                                # print "there is no %s.xls"%stockId
+                            title = item['title']
+                            logger.debug( title)
+                            if title is None:
+                                title = "None"
+                            
+
+                            formateTime = timestamp_datetime(long(str(timeStamp)[0:10]))
+                            # logger.debug(formateTime)
+                            YMD = formateTime[0:8]
+                            # logger.debug(YMD)
+                            TIME = formateTime[9:15]
+
+                            # logger.debug(TIME)
+                            text = item['text']
+                            if text is None:
+                                text = "None"
+                            targetNewsLink = self.get_news_link(text)
+                            if targetNewsLink is None:
+                                targetNewsLink = "None"
+                            retweet_count = item['retweet_count']
+                            # logger.debug(retweet_count)
+                            reply_count = item['reply_count']
+                            # logger.debug(reply_count)
+                            message_id = item['id']
+                            target = item['target']
+                            target_url = self.get_target_url(target)
+                            self.xslWriter.write(self.row,stockId,stockId,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,str(timeStamp))
+                            # self.xslWriter.write(self.row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,message_id,target_url,timeStamp)
+                            self.row = self.row+1
+                        break
+                # print("########################END %s####################" %stockId)
+                logger.info(u"########################END %s####################" %stockId)
+                self.xslWriter.close(stockId)
+                break
+        except FoundTimeStamp:
+            logger.info(u"########################END %s####################" %stockId)
             self.xslWriter.close(stockId)
-            break
+            pass
 
 class ParseStockId(object):
 
@@ -394,14 +445,12 @@ class MyThread(threading.Thread):
             logging.debug( "Starting " + self.name)
             stockName  = self.queue.get()
             stockId = self.stockNameId_dict[stockName]
-            jsonParser = JsonParser()
+            jsonParser = JsonParser(stockId)
             jsonParser.parse_process(stockId,stockName)
             self.queue.task_done()
             logging.debug( "Exiting " + self.name)
 
 if __name__ == '__main__':
-    new = 0
-    old = 0
     fileEmpty = []
     fileEmpty_old = []
     i = 0
