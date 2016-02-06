@@ -146,7 +146,7 @@ class XslWriter(object):
     #创建表格文件 
     def __init__(self,stockId):
         self.stockId = stockId
-        self.style = xlwt.easyxf('font: colour red' )
+        # self.style = xlwt.easyxf('font: colour red' )
         if os.path.isfile("NewsLinkText/%s.xls"%self.stockId):
             xl_workbook = xlrd.open_workbook("NewsLinkText/%s.xls"%self.stockId)
             self.w = copy(xl_workbook)
@@ -174,18 +174,18 @@ class XslWriter(object):
     def write(self,row,stockId,stockName,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,timeStamp):
     # def write(self,row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink):
         try:
-            self.ws.write(row,0,stockName,self.style)
-            self.ws.write(row,1,stockId,self.style)
-            self.ws.write(row,2,YMD,self.style)
-            self.ws.write(row,3,TIME,self.style)
-            self.ws.write(row,4,retweet_count,self.style)
-            self.ws.write(row,5,reply_count,self.style)
-            self.ws.write(row,6,title,self.style)
-            self.ws.write(row,7,targetNewsLink,self.style)
-            self.ws.write(row,8,text,self.style)
-            self.ws.write(row,9,message_id,self.style)
-            self.ws.write(row,10,target_url,self.style)
-            self.ws.write(row,11,timeStamp,self.style)
+            self.ws.write(row,0,stockName)
+            self.ws.write(row,1,stockId)
+            self.ws.write(row,2,YMD)
+            self.ws.write(row,3,TIME)
+            self.ws.write(row,4,retweet_count)
+            self.ws.write(row,5,reply_count)
+            self.ws.write(row,6,title)
+            self.ws.write(row,7,targetNewsLink)
+            self.ws.write(row,8,text)
+            self.ws.write(row,9,message_id)
+            self.ws.write(row,10,target_url)
+            self.ws.write(row,11,timeStamp)
         except Exception,e:
             raise
 
@@ -392,7 +392,7 @@ class JsonParser():
                             message_id = item['id']
                             target = item['target']
                             target_url = self.get_target_url(target)
-                            self.xslWriter.write(self.row,stockId,stockId,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,str(timeStamp))
+                            self.xslWriter.write(self.row,stockId,stockName,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,text,message_id,target_url,str(timeStamp))
                             # self.xslWriter.write(self.row,YMD,TIME,retweet_count,reply_count,title,targetNewsLink,message_id,target_url,timeStamp)
                             self.row = self.row+1
                         break
