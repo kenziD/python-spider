@@ -230,14 +230,14 @@ def readXls():
     #提取第三列辨别深圳还是上海
     code = []
     for cell_obj in xl_sheet.col(2):
-        # if u"深圳" in cell_obj.value or u"上海A6" in cell_obj.value:
-        #     code.append('SZ')
-        # elif u"上海" in cell_obj.value:
-        #     code.append('SH')
-        if u"深圳A" in cell_obj.value:
+        if u"深圳" in cell_obj.value or u"上海A6" in cell_obj.value:
             code.append('SZ')
-        elif u"上海A" in cell_obj.value:
+        elif u"上海" in cell_obj.value:
             code.append('SH')
+        # if u"深圳A" in cell_obj.value:
+        #     code.append('SZ')
+        # elif u"上海A" in cell_obj.value:
+        #     code.append('SH')
     stockid_list = [''.join(item) for item in zip(code,stockid_list)]
     # {"大东海B":ZH200613}
     stockNameId_dict = OrderedDict(zip(stockName_list,stockid_list))
@@ -309,7 +309,7 @@ class JsonParser():
                     if self.outsideRetry>0:
                         # print("outsideRetry %s to get %s json" % (self.outsideRetry,stockId))
                         logger.info(u"outsideRetry %s to get %s json" % (self.outsideRetry,stockId))
-                    if (self.outsideRetry == 4):
+                    if (self.outsideRetry == 10):
                         self.outsideRetry = 0
                         # print("########################END %s####################" %stockId)
                         logger.info(u"########################END %s####################" %stockId)
@@ -362,7 +362,10 @@ class JsonParser():
                                 if int(timeStamp) == int(self.newestTimeStamp):
                                     logger.debug( "%s found timeStamp"%stockId)
                                     if i == 1:
+                                        logger.info("%s i"%stockId)
                                         logger.info( "%s already newest"%stockId)
+                                    else:
+                                        logger.info( "%s updated OK"%stockId)
                                     raise FoundTimeStamp
                             # else:
                                 # print "there is no %s.xls"%stockId
