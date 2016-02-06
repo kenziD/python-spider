@@ -59,6 +59,7 @@ def read(fileName):
     xl_workbook = xlrd.open_workbook("NewsLinkText/%s.xls"%fileName)
     sheet_names = xl_workbook.sheet_names()
     xl_sheet = xl_workbook.sheet_by_name(sheet_names[0])
+    nrow = xl_sheet.nrows
     linkList=[]
     titleList = []
     textList = []
@@ -84,6 +85,8 @@ def read(fileName):
     linkTime_dict = OrderedDict(zip(linkList,timeList))
     linkId_dict = OrderedDict(zip(linkList,idList))
     link_TitleTextIdTime = OrderedDict(((key, [linkTitle_dict[key], linkText_dict[key],linkId_dict[key],linkTime_dict[key]]) for key in linkText_dict))
+    if len(linkId_dict.keys()) != nrow-1:
+        logger.debug("dict may have repeat link")
     return link_TitleTextIdTime
 
 
@@ -450,7 +453,7 @@ class ParseStockId(object):
             queue.put(i)
         queue.join()
 
-
+lock = threading.Lock()
 #一个线程
 class MyThread(threading.Thread):
     """docstring for MyThread"""
@@ -464,7 +467,9 @@ class MyThread(threading.Thread):
         self.queue = queue
 
     def run(self) :
+        global index
         while True:
+
             logging.debug( "Starting " + self.name)
             # print "threading number",threading.activeCount()
             try:
@@ -474,20 +479,26 @@ class MyThread(threading.Thread):
                 logging.debug( "Exiting " + self.name)
                 break
             else:
-                text = self.link_TitleTextIdTime_dict[link][1]
+                try:
+                    text = self.link_TitleTextIdTime_dict[link][1]
+                except:
+                    raise
                 title = self.link_TitleTextIdTime_dict[link][0]
                 message_id = str(self.link_TitleTextIdTime_dict[link][2])[0:8]
                 timeStamp = self.link_TitleTextIdTime_dict[link][3]
+                # if lock.acquire():
                 try:
                     MainProcess(link,text,title,self.folderName,message_id,timeStamp)
+                    # index = index+1
                 except Exception,e:
                     logger.warning("THREADING EXCEPTION!:%s"%e)
+                    # index = index+1
                     FAIL(self.folderName,link,"Threading exception",timeStamp)
                 finally:       
                     self.queue.task_done()
                     logging.debug( "Exiting " + self.name)
                 print " "
-
+                # lock.release()
 def getStcokIdNeed(fileName):
     for i in os.listdir(fileName):
         fn = i[0:8]
@@ -526,8 +537,9 @@ class Main():
 
     def getBadLinkList(self,folderName):
         badLinkList = []
-        f = open("NewsContent/%s/badlink.txt"%folderName,'r')
+        f = codecs.open("NewsContent/%s/badlink.txt"%folderName,'r','utf-8')
         for line in f:
+            # logger.debug("line%s"%line)
             badLinkList.append(line.rstrip())
         f.close()
         return badLinkList
@@ -558,8 +570,11 @@ class Main():
                 badLinkList = self.getBadLinkList(folderName)
                 self.removeFile("NewsContent/%s/badlink.txt"%folderName)
                 link_TitleTextIdTime_dict = read(folderName)
-                for link in badLinkList:
+                try:
                     badlinkDict[link] = link_TitleTextIdTime_dict[link]
+                except Exception,e:
+                    logger.info(u"重试失败链接异常：%s"%e)
+                    badlinkDict[link] = ["None","None","None","None"]
                 logger.info( u"重试%s失败链接"%folderName)
                 parseStockId = ParseStockId(folderName,badlinkDict)
                 parseStockId.passID()
@@ -587,7 +602,7 @@ class Main():
             logger.addHandler(fh)
             # 字典为读excel的字典
             link_TitleTextIdTime_dict = read(folderName)
-            if link_TitleTextIdTime_dict.keys()[0] is "":
+            if len(link_TitleTextIdTime_dict.keys())==0:
                 logger.info( u"%s股票文件为空,检查下一只股票"%folderName)
                 logger.removeHandler(fh)
                 continue
@@ -612,15 +627,23 @@ class Main():
             parseStockId = ParseStockId(folderName,link_TitleTextIdTime_dict)
             parseStockId.passID()
             badLinkList_old = []
+            oldindex = 0
+            oldfail = 1
             while True:
                 index = 1
                 success = 1
                 fail = 1
                 badlinkDict = {}
+
                 have = self.checkFile("NewsContent/%s/badlink.txt"%folderName)
                 if have:
                     badLinkList = self.getBadLinkList(folderName)
-                    if len(badLinkList) == len(badLinkList_old):
+                    logger.debug(len(badLinkList))
+                    logger.debug(len(badLinkList_old))
+                    # if len(badLinkList) == len(badLinkList_old):
+                    logger.debug(oldindex)
+                    logger.debug(oldfail)
+                    if oldindex == oldfail:
                         logger.info( u"重试%s结束"%folderName)
                         break
                     self.removeFile("NewsContent/%s/badlink.txt"%folderName)
@@ -630,10 +653,13 @@ class Main():
                         try:
                             badlinkDict[link] = link_TitleTextIdTime_dict[link]
                         except Exception,e:
-                            logger.info("重试失败链接异常：%s"%e)
+                            logger.info(u"重试失败链接异常：%s"%e)
+                            badlinkDict[link] = ["None","None","None","None"]
                     logger.info( u"重试%s失败链接"%folderName)
                     parseStockId = ParseStockId(folderName,badlinkDict)
                     parseStockId.passID()
+                    oldindex = index
+                    oldfail = fail
                 else:
                     break
             logger.removeHandler(fh)
