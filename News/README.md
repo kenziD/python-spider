@@ -99,4 +99,35 @@ driver = webdriver.Chrome("E:/Program Files/chromedriver_win32/chromedriver.exe"
 ```
 官方网站没有windows 64位chromedirver
 
+* countnum.py
+
+功能:
+
+输入
+```python countNum.py stockId```
+例如 
+```python countNum.py SZ000001```
+
+将会自动计算已经爬的新闻加上badlink的新闻数量是否和原xsl文件数量一致
+
+如果一致显示：complete
+
+如果不一致，将会自动生成SZ000001.diff 和SZ000001origin.diff
+
+SZ000001.diff 
+是已经爬到本地的新闻messageid和badlink里的messageid总和
+
+SZ000001origin.diff是从xsl里直接读取的原messageid。
+如果想精确知道哪些新闻没有缺少了。
+
+用diffmerge软件比较一下就可以。
+
+如果直接输入```python countNum.py ```后面不带参数
+
+则会自动计算NewsLinkText里的所有股票。
+
+按理说，爬到本地的新闻加上badlink里的应该等于总和。但有时候不相等。原因是因为多线程没有加锁。导致线程共享变量：计数的index有时会被多个线程使用
+导致重复。且多线程共同写一个文件时（这里是badlink.txt文件）会有复写。使得badlink里的链接少了。
+如果加了锁可以保证所有股票爬下来都能数量一致。但是速度会是不加锁的速度的三倍。（getNewsContent.py）。
+
 
