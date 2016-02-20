@@ -112,15 +112,10 @@ driver = webdriver.Chrome("E:/Program Files/chromedriver_win32/chromedriver.exe"
 
 如果一致显示：complete
 
-如果不一致，将会自动生成SZ000001.diff 和SZ000001origin.diff
+将会自动计算已经爬的新闻加上badlink的新闻数量是否和原xsl文件数量一致
+如果一致显示：complete
 
-SZ000001.diff 
-是已经爬到本地的新闻messageid和badlink里的messageid总和
-
-SZ000001origin.diff是从xsl里直接读取的原messageid。
-如果想精确知道哪些新闻没有缺少了。
-
-用diffmerge软件比较一下就可以。
+如果不一致，将会显示少了哪些
 
 如果直接输入```python countNum.py ```后面不带参数
 
