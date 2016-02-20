@@ -45,8 +45,6 @@ def checkDir(folder):
 #将新闻链接放在NewsLink文件夹中
 checkDir("NewsLinkText")
 
-
-
 socket.setdefaulttimeout(10) #设置10秒后连接超时
 format = '%Y-%m-%d-%H-%M-%S'
 #用时间命名log日志
@@ -298,7 +296,7 @@ class JsonParser():
         try:
             # print("###################BEGIN %s####################" %stockId)
             logger.debug(u"###################BEGIN %s####################" %stockId)
-            logger.debug("stockName %s" % stockId)
+            logger.debug("stockName %s" % stockName)
             logger.debug("stockId %s" %stockId)
             while True:
                 #实例化
@@ -421,6 +419,7 @@ class ParseStockId(object):
         self.tsk = []
 
     def passID(self):
+
         queue = Queue.Queue()
         #开启5个线程
         for i in range(5):
@@ -448,13 +447,22 @@ class MyThread(threading.Thread):
 
     def run(self) :
         while True:
-            logging.debug( "Starting " + self.name)
-            stockName  = self.queue.get()
+            logger.debug( "Starting " + self.name)
+            try:
+                stockName  = self.queue.get(3,True)
+            except Queue.Empty:
+                logger.debug("queue is empty")
+                logger.debug( "Exiting " + self.name)
+                break
             stockId = self.stockNameId_dict[stockName]
-            jsonParser = JsonParser(stockId)
-            jsonParser.parse_process(stockId,stockName)
-            self.queue.task_done()
-            logging.debug( "Exiting " + self.name)
+            try:
+                jsonParser = JsonParser(stockId)
+                jsonParser.parse_process(stockId,stockName)
+            except Exception,e:
+                logger.warning("THREADING EXCEPTION!:%s"%e)
+            finally:
+                self.queue.task_done()
+                logger.debug( "Exiting " + self.name)
 
 if __name__ == '__main__':
     fileEmpty = []
