@@ -6,10 +6,7 @@ function:
 
 将会自动计算已经爬的新闻加上badlink的新闻数量是否和原xsl文件数量一致
 如果一致显示：complete
-如果不一致，将会自动生成SZ000001.diff 和SZ000001origin.diff
-SZ000001.diff 是已经爬到本地的新闻messageid和badlink里的messageid总和
-SZ000001origin.diff是从xsl里直接读取的原messageid。
-如果想精确知道哪些新闻没有缺少了。用diffmerge软件比较一下就可以。
+如果不一致，将会显示少了哪些
 
 如果直接输入python countNum.py 
 则会自动计算NewsLinkText里的所有股票。
@@ -48,9 +45,9 @@ def defineStockIdListbyCmdArgv():
     if len(sysList)==2:
         stockIdList.append(sys.argv[1])
     elif len(sysList)==1:
-        for i in os.listdir("NewsLinkText/"):
+        for i in os.listdir("NewsContent/"):
             if not i.startswith('.'):
-                stockIdList.append(i.replace(".xls",""))
+                stockIdList.append()
     return stockIdList
 
 def getExitNewsTXT(stockId):
@@ -96,12 +93,12 @@ def diffNum():
             print " "
         else:
             print list(set(message_idList) - set(processList))
-            with open("%s.diff"%stockId,"w") as f:
-                for i in processList:
-                    f.write(i+'\n')
-            with open("%sorigin.diff"%stockId,"w") as f:
-                for i in message_idList:
-                    f.write(str(i)+'\n')
+            # with open("%s.diff"%stockId,"w") as f:
+            #     for i in processList:
+            #         f.write(i+'\n')
+            # with open("%sorigin.diff"%stockId,"w") as f:
+            #     for i in message_idList:
+            #         f.write(str(i)+'\n')
             print u"Not complete"
             print " "
 
