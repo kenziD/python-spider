@@ -494,7 +494,7 @@ class MyThread(threading.Thread):
                     logger.warning("THREADING EXCEPTION!:%s"%e)
                     # index = index+1
                     FAIL(self.folderName,link,"Threading exception",timeStamp)
-                finally:       
+                finally:
                     self.queue.task_done()
                     logging.debug( "Exiting " + self.name)
                 print " "
