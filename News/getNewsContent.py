@@ -122,6 +122,8 @@ def getNewsHtml(url,retry=3):
         #     html=zlib.decompress(html, 16+zlib.MAX_WBITS)
         # if encode == "deflate":
         #     html = deflate(html)
+        if r.status_code == 404:
+            return None
         if html is None:
             if retry>0:
                 logger.debug( "Html:None. Retry %s %s" %(url,4-retry))
@@ -130,6 +132,9 @@ def getNewsHtml(url,retry=3):
             else:
                 return None
         return html
+    except requests.ConnectionError,e:
+        logger.debug("EXCEPTION! %s"%e)
+        return None
     except Exception,e:
         if retry>0:
             logger.debug( "EXCEPTION!:%s. Retry %s %s" %(e,url,4-retry))
@@ -470,13 +475,13 @@ class MyThread(threading.Thread):
         global index
         while True:
 
-            logging.debug( "Starting " + self.name)
+            logger.debug( "Starting " + self.name)
             # print "threading number",threading.activeCount()
             try:
                 link  = self.queue.get(3,True)
             except Queue.Empty:
                 logger.debug("queue is empty")
-                logging.debug( "Exiting " + self.name)
+                logger.debug( "Exiting " + self.name)
                 break
             else:
                 try:
@@ -496,7 +501,7 @@ class MyThread(threading.Thread):
                     FAIL(self.folderName,link,"Threading exception",timeStamp)
                 finally:
                     self.queue.task_done()
-                    logging.debug( "Exiting " + self.name)
+                    logger.debug( "Exiting " + self.name)
                 print " "
                 # lock.release()
 def getStcokIdNeed(fileName):
