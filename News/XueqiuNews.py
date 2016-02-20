@@ -19,11 +19,11 @@ import xlwt
 from collections import OrderedDict
 from xlutils.copy import copy
 """
-Function: 爬取雪球网新闻链接v0.1
+Function: 爬取雪球网新闻链接
 Author: KenziD
 
 运行要求：
-1. 安装处理工具包(pip install lxml pyExcelerator xlrd chardet)。
+1. 安装处理工具包(pip install lxml xlrd chardet xlwt xlutils)。
 2. 本程序路径最好不要有中文。
 3. 在控制台中运行 python XueqiuNews.py。
 3. 程序运行结束将在输出文件夹NewsLink保存相关股票表格。表格中是此股票包含的新闻链接。
@@ -209,7 +209,7 @@ def read(fileName):
         return 0,0
     return timeList[0],nrows
 #读stock表格
-def readXls():
+def readXls(again = False):
     # Open the workbook
     xl_workbook = xlrd.open_workbook("source.xls")
     sheet_names = xl_workbook.sheet_names()
@@ -241,10 +241,11 @@ def readXls():
     stockid_list = [''.join(item) for item in zip(code,stockid_list)]
     # {"大东海B":ZH200613}
     stockNameId_dict = OrderedDict(zip(stockName_list,stockid_list))
-    # fn = os.listdir('NewsLinkText')
-    # for k,v in stockNameId_dict.items():
-    #     if any(v in s for s in fn):
-    #             stockNameId_dict.pop(k)
+    if again:
+        fn = os.listdir('NewsLinkText')
+        for k,v in stockNameId_dict.items():
+            if any(v in s for s in fn):
+                    stockNameId_dict.pop(k)
     return stockNameId_dict
 
 class JsonParser():
@@ -296,7 +297,7 @@ class JsonParser():
     def parse_process(self,stockId,stockName):
         try:
             # print("###################BEGIN %s####################" %stockId)
-            logger.info(u"###################BEGIN %s####################" %stockId)
+            logger.debug(u"###################BEGIN %s####################" %stockId)
             logger.debug("stockName %s" % stockId)
             logger.debug("stockId %s" %stockId)
             while True:
@@ -305,12 +306,13 @@ class JsonParser():
                 news_json = jsonGetter.get_News_json(stockId,50,1)
                 if news_json is None:
                     # print("fail to get %s json" % stockId)
-                    logger.info(u"fail to get %s json" % stockId)
+                    logger.debug(u"fail to get %s json" % stockId)
                     if self.outsideRetry>0:
                         # print("outsideRetry %s to get %s json" % (self.outsideRetry,stockId))
-                        logger.info(u"outsideRetry %s to get %s json" % (self.outsideRetry,stockId))
+                        logger.debug(u"outsideRetry %s to get %s json" % (self.outsideRetry,stockId))
                     if (self.outsideRetry == 10):
                         self.outsideRetry = 0
+                        logger.info(u"outsideRetry 10 to get %s json" %stockId)
                         # print("########################END %s####################" %stockId)
                         logger.info(u"########################END %s####################" %stockId)
                         self.xslWriter.close(stockId)
@@ -331,9 +333,10 @@ class JsonParser():
                     while True:
                         if(retry>0):
                             # print("retry %s to get json %s page %s "%(retry,stockId,pageIndex))
-                            logger.info(u"retry %s to get json %s page %s "%(retry,stockId,pageIndex))
+                            logger.debug(u"retry %s to get json %s page %s "%(retry,stockId,pageIndex))
                         if (retry == 50):
                             retry = 0
+                            logger.info("retry 50 to get json  %s page %s "%(stockId,pageIndex))
                             # print("########################END %s####################" %stockId)
                             logger.info(u"########################END %s####################" %stockId)
                             self.xslWriter.close(stockId)
@@ -341,7 +344,7 @@ class JsonParser():
                         news_json = jsonGetter.get_News_json(stockId,50, pageIndex)
                         if news_json is None:
                             # print("fail to get json %s page %s" % (stockId,pageIndex))
-                            logger.info(u"fail to get json %s page %s" % (stockId,pageIndex))
+                            logger.debug(u"fail to get json %s page %s" % (stockId,pageIndex))
                             retry = retry+1
                             continue
                         decode_news_json = json.loads(news_json)
@@ -359,10 +362,11 @@ class JsonParser():
                             if self.haveXsl:
                                 # print "newestTimeStamp:",newestTimeStamp
                                 # print "timeStamp:",timeStamp
+                                #如果
                                 if int(timeStamp) == int(self.newestTimeStamp):
                                     logger.debug( "%s found timeStamp"%stockId)
                                     if i == 1:
-                                        logger.info("%s i"%stockId)
+                                        logger.info("%s"%stockId)
                                         logger.info( "%s already newest"%stockId)
                                     else:
                                         logger.info( "%s updated OK"%stockId)
@@ -412,8 +416,8 @@ class ParseStockId(object):
 
 
     """docstring for getStockId"""
-    def __init__(self):
-        self.stockNameId_dict =  readXls()
+    def __init__(self,again=False):
+        self.stockNameId_dict =  readXls(again)
         self.tsk = []
 
     def passID(self):
@@ -437,7 +441,6 @@ class MyThread(threading.Thread):
 
     def __init__(self, thread_id, name,queue,dic) :
         super(MyThread, self).__init__()  #调用父类的构造函数 
-        # self.stockNameId_dict =  readXls()
         self.stockNameId_dict = dic
         self.thread_id = thread_id
         self.name = name
@@ -457,11 +460,16 @@ if __name__ == '__main__':
     fileEmpty = []
     fileEmpty_old = []
     i = 0
+    again = False
     while True:
-        parseStockId = ParseStockId()
-        parseStockId.passID()
+        if not again: 
+            parseStockId = ParseStockId()
+            parseStockId.passID()
+        if again:
+            parseStockId = ParseStockId(again)
+            parseStockId.passID()
         fileEmpty = []
-        fn = os.listdir('.\NewsLinkText')
+        fn = os.listdir('NewsLinkText')
         for filename in fn:
             if os.stat('NewsLinkText/%s'%filename).st_size/1024.0<7:
                 # print ('empty file is %s'%filename)
@@ -478,4 +486,5 @@ if __name__ == '__main__':
         fileEmpty_old = fileEmpty
         # print( "AGAIN %s"%i)
         logger.info( u"AGAIN %s"%i)
+        again = True
         i = i+1
