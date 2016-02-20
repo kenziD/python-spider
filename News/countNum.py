@@ -69,7 +69,7 @@ def getBadLink(stockId):
                 line = line.rstrip()
                 for k,v in linkId_dict.items():
                     if line == k:
-                        badLinkList.append(v+"b")
+                        badLinkList.append(v)
     else:
         badLinkList = []
     return badLinkList
@@ -95,6 +95,7 @@ def diffNum():
             print u"complete"
             print " "
         else:
+            print list(set(message_idList) - set(processList))
             with open("%s.diff"%stockId,"w") as f:
                 for i in processList:
                     f.write(i+'\n')
@@ -102,5 +103,6 @@ def diffNum():
                 for i in message_idList:
                     f.write(str(i)+'\n')
             print u"Not complete"
+            print " "
 
 diffNum()
