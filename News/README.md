@@ -167,8 +167,9 @@ lock.release()
 ```
 即为加锁后的程序。
 
+* 更新流程
 
+重复运行一遍上述步骤。
 
-
-
+先```python XueqiuNews.py```再 ```python getNewsContent.py s```
 
