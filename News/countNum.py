@@ -28,13 +28,9 @@ def read(stockId):
     linkList = []
     for cell_obj in xl_sheet.col(9):
         message_idList.append(str(cell_obj.value).replace(".0",""))
-    del message_idList[0:1]
-    for cell_obj in xl_sheet.col(7):
-        linkList.append(cell_obj.value)
-    del linkList[0:1]
-    linkId_dict = dict(zip(linkList,message_idList))
+    del message_idList[0:1]    
     message_idList.sort(reverse=True)
-    return linkId_dict,message_idList
+    return message_idList
 
 
 def defineStockIdListbyCmdArgv():
@@ -47,7 +43,7 @@ def defineStockIdListbyCmdArgv():
     elif len(sysList)==1:
         for i in os.listdir("NewsContent/"):
             if not i.startswith('.'):
-                stockIdList.append()
+                stockIdList.append(i)
     return stockIdList
 
 def getExitNewsTXT(stockId):
@@ -59,14 +55,12 @@ def getExitNewsTXT(stockId):
 
 def getBadLink(stockId):
     badLinkList = []
-    linkId_dict,message_idList = read(stockId)
+    message_idList = read(stockId)
     if os.path.isfile("NewsContent/%s/badlink.txt"%stockId):
         with codecs.open("NewsContent/%s/badlink.txt"%stockId,'r','utf-8') as f:
             for line in f:
                 line = line.rstrip()
-                for k,v in linkId_dict.items():
-                    if line == k:
-                        badLinkList.append(v)
+                badLinkList.append(line)
     else:
         badLinkList = []
     return badLinkList
@@ -81,9 +75,7 @@ def diffNum():
         processList.sort(reverse = True)
         
 
-        linkId_dict,message_idList = read(stockId)
-
-        
+        message_idList = read(stockId)
         print "origin %s.xsl length:%s"%(stockId,len(message_idList))
         print "program %s.xsl length:%s"%(stockId,len(processList))
         print "     %s already download:%s"%(stockId,len(txtList))
@@ -92,6 +84,8 @@ def diffNum():
             print u"complete"
             print " "
         else:
+            # print message_idList
+            # print processList
             print list(set(message_idList) - set(processList))
             # with open("%s.diff"%stockId,"w") as f:
             #     for i in processList:
