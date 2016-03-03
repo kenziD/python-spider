@@ -20,31 +20,46 @@
 
 * 再运行getNewsContent.py
 
-	指令为
+	可以运行
+	```
+	python getNewsContent.py -h
+	```
+
+	查看帮助信息
+
+	指令详解
 
 	```
-	python getNewsContent.py s
+	python getNewsContent.py
 	```
 
 	或者
 
+	```	
+	python getNewsContent.py ［stockid]
 	```
-	python getNewsContent.py start
+	即
+
+	```
+	python getNewsContent.py SH600000
 	```
 
+	将爬去某个指定id的新闻，如果没有指定id，则爬去NewsLinkText文件夹内的新闻
+
+	程序运行过程中，
 	将会在所在文件夹生成NewsContent文件夹，每个股票将生成一个文件夹，相应的新闻以新闻id的名字命名生成txt文件。
 
-	badlink.txt包含了失败的链接。
+	badlink.txt包含了失败的链接id。
 
-	processtime.txt包含了爬过的新闻的时间戳。
+	processId.txt包含了爬过的新闻的id。
 
 	如果程序中断，重新运行：
 
 	```
-	python getNewsContent.py s
+	python getNewsContent.py
 	```
 
-	会根据processtime.txt检测已经爬过的新闻，以便接着上次继续。
+	会根据processId.txt检测已经爬过的新闻，以便接着上次继续。
 
 	log文件记录的日志信息，可以查询某链接失败的原因。
 
@@ -57,7 +72,7 @@ NewsContent
 ----SH000001
 --------2016-01-01-12-23-23.log
 --------badlink.txt
---------processTime.txt
+--------processid.txt
 --------32432442.txt
 --------...
 ----SZ400002
@@ -65,46 +80,36 @@ NewsContent
 ----SH900000
 --------...
 ```
-运行
+* 运行
 
 ```
-python getNewsContent.py r
+python getNewsContent.py r [stockid]
 ```
 
 或者
 
 ```
-python getNewsContent.py retry
+python getNewsContent.py retry [stockid]
 ```
 
-会重新过滤一遍所有股票失败链接。
+如果不加stockid参数，会重新过滤一遍所有股票失败链接。
 
-* [可选]运行
+如果加了stockid参数，过滤指定id的失败链接。
 
-```
-python openlink.py arg from-to
-```
+其中的失败链接是从badlink中读取的。
 
-arg为股票的id
-例如
+* 运行
 
 ```
-python openlink.py SH600001 1-10
+python getNewsContent.py -rf [stockid]
 ```
 
-将在chrome浏览器里打开badlink中1-10，共10条链接，
-```
-python openlink.py SH600001 20-30
-```
-将在chrome浏览器里打开badlink中第20-30，共10条链接，
 
-以此检测哪些是真正失败的链接，哪些是漏网之鱼。注意要安装chromedriver[下载地址](http://chromedriver.storage.googleapis.com/index.html?path=2.20/)。并把程序中的路径改为你的chromedriver所在文件夹。
-如下所示：
+如果不加stockid参数，会重新过滤一遍所有股票失败链接。
 
-```
-driver = webdriver.Chrome("E:/Program Files/chromedriver_win32/chromedriver.exe")
-```
-官方网站没有windows 64位chromedirver
+如果加了stockid参数，过滤指定id的失败链接。
+
+其中的失败链接是（全部链接－本地已经下载下来的链接）不从badlink中读取。
 
 *[可选] countnum.py
 
@@ -125,47 +130,6 @@ driver = webdriver.Chrome("E:/Program Files/chromedriver_win32/chromedriver.exe"
 
 则会自动计算NewsContent文件夹里的所有股票。
 
-* 说明
-
-按理说，爬到本地的新闻加上badlink里的应该等于总和。但有时候不相等。原因是因为多线程没有加锁。导致线程共享变量：计数的index有时会被多个线程使用
-导致重复。且多线程共同写一个文件时（这里是badlink.txt文件）会有复写。使得badlink里的链接少了。
-如果加了锁可以保证所有股票爬下来都能数量一致。但是速度会是不加锁的速度的三倍。（getNewsContent.py）。
-
-程序的具体位置在getNewsContent的494行
-
-```
-# if lock.acquire():
-try:
-    MainProcess(link,text,title,self.folderName,message_id,timeStamp)
-    # index = index+1
-except Exception,e:
-    logger.warning("THREADING EXCEPTION!:%s"%e)
-    # index = index+1
-    FAIL(self.folderName,link,"Threading exception",timeStamp)
-finally:
-    self.queue.task_done()
-    logger.debug( "Exiting " + self.name)
-print " "
-# lock.release()
-```
-将```if lock.acquire():```和```lock.release()```的注释去掉。并将中间部分缩进。
-
-```
-if lock.acquire():
-	try:
-	    MainProcess(link,text,title,self.folderName,message_id,timeStamp)
-	    # index = index+1
-	except Exception,e:
-	    logger.warning("THREADING EXCEPTION!:%s"%e)
-	    # index = index+1
-	    FAIL(self.folderName,link,"Threading exception",timeStamp)
-	finally:
-	    self.queue.task_done()
-	    logger.debug( "Exiting " + self.name)
-	print " "
-lock.release()
-```
-即为加锁后的程序。
 
 * 更新流程
 
