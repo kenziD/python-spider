@@ -24,7 +24,10 @@ import logging
 import requests
 import threading
 from collections import OrderedDict
+import argparse
 
+
+import datetime
 # 验证文件夹是否存在 不存在则创建
 def checkDir(folder):
     if os.path.isdir(folder):
@@ -78,23 +81,16 @@ def read(fileName):
         timeList.append(cell_obj.value)
     del timeList[0:1]
     for cell_obj in xl_sheet.col(9):
-        idList.append(cell_obj.value)
+        idList.append(str(cell_obj.value)[0:8])
     del idList[0:1]
-    linkTitle_dict = OrderedDict(zip(linkList,titleList))
-    linkText_dict = OrderedDict(zip(linkList,textList))
-    linkTime_dict = OrderedDict(zip(linkList,timeList))
-    linkId_dict = OrderedDict(zip(linkList,idList))
-    link_TitleTextIdTime = OrderedDict(((key, [linkTitle_dict[key], linkText_dict[key],linkId_dict[key],linkTime_dict[key]]) for key in linkText_dict))
-    if len(linkId_dict.keys()) != nrow-1:
+    idTitle_dict = OrderedDict(zip(idList,titleList))
+    idText_dict = OrderedDict(zip(idList,textList))
+    idTime_dict = OrderedDict(zip(idList,timeList))
+    idLink_dict = OrderedDict(zip(idList,linkList))
+    id_TitleTextLinkTime = OrderedDict(((key, [idTitle_dict[key], idText_dict[key],idLink_dict[key],idTime_dict[key]]) for key in idLink_dict))
+    if len(idLink_dict.keys()) != nrow-1:
         logger.debug("dict may have repeat link")
-    return link_TitleTextIdTime
-
-
-# def deflate(data):   # zlib only provides the zlib compress format, not the deflate format;
-#   try:               # so on top of all there's this workaround:
-#     return zlib.decompress(data, -zlib.MAX_WBITS)
-#   except zlib.error:
-#     return zlib.decompress(data)
+    return id_TitleTextLinkTime
 
 
 # 有一些链接是.pdf
@@ -112,16 +108,8 @@ def getNewsHtml(url,retry=3):
         # "Accept-Encoding":"gzip,deflate"
     }
     try:
-        # req = urllib2.Request(url, headers=headers)
-        # response = urllib2.urlopen(req,timeout = 10)
-        # html = response.read()
         r = requests.get(url,timeout=6,headers = headers)
         html = r.content
-        # encode = response.headers.get("content-encoding")
-        # if encode== "gzip":
-        #     html=zlib.decompress(html, 16+zlib.MAX_WBITS)
-        # if encode == "deflate":
-        #     html = deflate(html)
         if r.status_code == 404:
             return None
         if html is None:
@@ -150,19 +138,19 @@ def xpathforSohu(link,newsHtml,timeStamp,message_id,folderName):
         tree = etree.HTML(newsHtml)
         content_node = tree.xpath(u'//*[@id="contentText"]')
         if len(content_node) == 0:
-            FAIL(folderName,link,"sohu content",timeStamp)
+            FAIL(folderName,link,"sohu content",message_id)
             return
     except Exception,e:
         logger.debug("sohu Exception:%s"%e)
-        FAIL(folderName,link,"sohu Exception",timeStamp)
+        FAIL(folderName,link,"sohu Exception",message_id)
         return
     n = NewsHtmlAnlyze()
     content = n.getContentInParentDiv(content_node[0])
     if content =="":
-        FAIL(folderName,link,"content",timeStamp)
+        FAIL(folderName,link,"content",message_id)
         return
     writeNewsContent(folderName,message_id,content,link)
-    SUCCESS(folderName,link,timeStamp)
+    SUCCESS(folderName,link,message_id)
 
 
 #根据10jqka网站单独处理xpath节点
@@ -176,19 +164,19 @@ def xpathfor10jqka(link,newsHtml,timeStamp,message_id,folderName):
             content_node = tree.xpath(u'//div[@class="art_main"]')
             logger.debug("art_main:%s"%content_node)
         if len(content_node) == 0:
-            FAIL(folderName,link,"10jqka content",timeStamp)
+            FAIL(folderName,link,"10jqka content",message_id)
             return
     except Exception,e:
         logger.debug("10jqka Exception:%s"%e)
-        FAIL(folderName,link,"10jqka Exception",timeStamp)
+        FAIL(folderName,link,"10jqka Exception",message_id)
         return
     n = NewsHtmlAnlyze()
     content = n.getContentInParentDiv(content_node[0])
     if content =="":
-        FAIL(folderName,link,"content",timeStamp)
+        FAIL(folderName,link,"content",message_id)
         return
     writeNewsContent(folderName,message_id,content,link)
-    SUCCESS(folderName,link,timeStamp)
+    SUCCESS(folderName,link,message_id)
 
 
 # 针对qq财经单独处理 使用正则匹配p标签内的内容
@@ -198,7 +186,7 @@ def reforFinanceQQ(link,html,timeStamp,message_id,folderName,method = "1"):
         pattern = re.compile(ur'<P|p>(.*?)</P|p>')
         content = pattern.findall(html)
         if not content:
-            FAIL(folderName,link,"qq content",timeStamp)
+            FAIL(folderName,link,"qq content",message_id)
             return
         text = ""
         for i in content:
@@ -209,7 +197,7 @@ def reforFinanceQQ(link,html,timeStamp,message_id,folderName,method = "1"):
         with open("NewsContent/%s/%s.txt"%(folderName,message_id), "w") as myfile:
             myfile.write(content+'\n')
         # writeNewsContent(folderName,message_id,content,link)
-        SUCCESS(folderName,link,timeStamp)
+        SUCCESS(folderName,link,message_id)
     if method == "1":
         logger.debug("qq method 1")
         pattern = re.compile(ur'<P style="TEXT-INDENT: 2em">(.*?)</P>')
@@ -226,7 +214,7 @@ def reforFinanceQQ(link,html,timeStamp,message_id,folderName,method = "1"):
         with open("NewsContent/%s/%s.txt"%(folderName,message_id), "w") as myfile:
             myfile.write(content+'\n')
         # writeNewsContent(folderName,message_id,content,link)
-        SUCCESS(folderName,link,timeStamp)
+        SUCCESS(folderName,link,message_id)
 
 
 # 针对新浪财经单独处理
@@ -331,52 +319,37 @@ def writeNewsContent(folderName,message_id,content,link):
         f.close()
 
 
-# 保存失败的链接 
-def badLinkSave(stockID,link):
-    try:
-        f = codecs.open("NewsContent/%s/badlink.txt"%stockID, "a","utf-8")
-        f.write(link+'\r\n')
-    except Exception,e:
-        logger.debug("badlink save Exception:%s"%e)
-    finally:
-        f.close()
 
-
-# 保存运行过的链接对应的时间戳
-def processTimeSave(stockID,timeStamp):
-    logger.debug("process link save index:%s"%index)
-    try:
-        f = codecs.open("NewsContent/%s/processTime.txt"%stockID, "a","utf-8")
-        f.write(str(timeStamp)+'\r\n')
-    except Exception,e:
-        logger.debug("process save Exception:%s"%e)
-    finally:
-        f.close()
-        logger.debug("process link save over:%s"%index)
 
 # 失败
-def FAIL(stockID,link,cause,timeStamp,oldlink=None):
+def FAIL(stockID,link,cause,message_id,oldlink = None):
     global index
     global fail
+    global badlinkQueue
     if oldlink:
         link = oldlink
-    badLinkSave(stockID,link)
-    processTimeSave(stockID,timeStamp)
-    logger.info("Index:%s Fail:%s Fail to get %s cause %s is none" %(index,fail,link,cause))
+    messageid_stockid={}
+    messageid_stockid[message_id]=stockID
+    badlinkQueue.put(messageid_stockid)
+    
+    messageIdQueue.put(messageid_stockid)
+    logger.info("Index:%s Fail:%s Fail to get %s cause %s is none" %(index,fail,message_id,cause))
     # logger.info("Fail get %s"%link)
     index = index+1
     fail  = fail +1
 
 
 # 成功
-def SUCCESS(stockID,link,timeStamp,oldlink = None):
+def SUCCESS(stockID,link,message_id,oldlink = None):
     global index
     global success
     if oldlink:
         link = oldlink
-    processTimeSave(stockID,timeStamp)
+    messageid_stockid={}
+    messageid_stockid[message_id]=stockID
+    messageIdQueue.put(messageid_stockid)
+    
     logger.info("Index:%s Success:%s Success get news %s" %(index,success,link))
-    # logger.info("Success get %s"%link)
     index = index+1
     success  = success +1
 
@@ -398,11 +371,11 @@ def MainProcess(link,text,title,folderName,message_id,timeStamp,oldlink=None):
     logger.debug("link is %s" %link)
     if ".pdf" in link:
         getPdf(link,folderName,message_id)
-        SUCCESS(folderName,link,timeStamp,oldlink)
+        SUCCESS(folderName,link,message_id,oldlink)
         return
     newsHtml= getNewsHtml(link)
     if newsHtml is None:
-        FAIL(folderName,link,"newsHtml",timeStamp)
+        FAIL(folderName,link,"newsHtml",message_id)
         return
     if "stock.sohu.com" in link:
         xpathforSohu(link,newsHtml,timeStamp,message_id,folderName)
@@ -418,27 +391,27 @@ def MainProcess(link,text,title,folderName,message_id,timeStamp,oldlink=None):
     logger.debug("final content_node is %s"%content_node)
     if content_node is None:
         if oldlink:
-            FAIL(folderName,link,"content_node",timeStamp,oldlink)
+            FAIL(folderName,link,"content_node",message_id,oldlink)
             return
         if "finance.sina.com.cn" in link and chardet.detect(newsHtml)["encoding"]=="ascii":
             oldlink = link
             link = getNewLinkforFinanceSina(newsHtml)
             MainProcess(link,text,title,folderName,message_id,timeStamp,oldlink)
             return
-        FAIL(folderName,link,"content_node",timeStamp)
+        FAIL(folderName,link,"content_node",message_id)
         return
     parent_div =  newsHtmlAnlyze.getParentDiv(content_node)
     logger.debug("parent_div is %s"%parent_div)
     if parent_div is None:
-        FAIL(folderName,link,"parent_div",timeStamp)
+        FAIL(folderName,link,"parent_div",message_id)
         return
     content = newsHtmlAnlyze.getContentInParentDiv(parent_div)
     if content == "":
-        FAIL(folderName,link,"content",timeStamp)
+        FAIL(folderName,link,"content",message_id)
         return
     # title = re.sub('[\/:*?"<>|]','-',title)
     writeNewsContent(folderName,message_id,content,link)
-    SUCCESS(folderName,link,timeStamp,oldlink)
+    SUCCESS(folderName,link,message_id,oldlink)
 
 
 # 多线程
@@ -446,15 +419,15 @@ class ParseStockId(object):
     """docstring for getStockId"""
     def __init__(self,fileName,dic):
         self.fileName = fileName
-        self.link_TitleTextIdTime_dict = dic
+        self.id_TitleTextLinkTime_dict = dic
 
     def passID(self):
         queue = Queue.Queue()
         for i in range(50):
-            t = MyThread(i,"Threading%s"%i,queue,self.link_TitleTextIdTime_dict,self.fileName)
+            t = MyThread(i,"Threading%s"%i,queue,self.id_TitleTextLinkTime_dict,self.fileName)
             t.setDaemon(True)
             t.start()
-        for i in self.link_TitleTextIdTime_dict:
+        for i in self.id_TitleTextLinkTime_dict:
             queue.put(i)
         queue.join()
 
@@ -465,7 +438,7 @@ class MyThread(threading.Thread):
 
     def __init__(self,thread_id, name,queue,dic,folderName):
         super(MyThread, self).__init__()  #调用父类的构造函数
-        self.link_TitleTextIdTime_dict = dic
+        self.id_TitleTextLinkTime_dict = dic
         self.folderName = folderName
         self.thread_id = thread_id
         self.name = name
@@ -478,19 +451,19 @@ class MyThread(threading.Thread):
             logger.debug( "Starting " + self.name)
             # print "threading number",threading.activeCount()
             try:
-                link  = self.queue.get(3,True)
+                message_id  = self.queue.get(3,True)
             except Queue.Empty:
                 logger.debug("queue is empty")
                 logger.debug( "Exiting " + self.name)
                 break
             else:
                 try:
-                    text = self.link_TitleTextIdTime_dict[link][1]
+                    text = self.id_TitleTextLinkTime_dict[message_id][1]
                 except:
                     raise
-                title = self.link_TitleTextIdTime_dict[link][0]
-                message_id = str(self.link_TitleTextIdTime_dict[link][2])[0:8]
-                timeStamp = self.link_TitleTextIdTime_dict[link][3]
+                title = self.id_TitleTextLinkTime_dict[message_id][0]
+                link = self.id_TitleTextLinkTime_dict[message_id][2]
+                timeStamp = self.id_TitleTextLinkTime_dict[message_id][3]
                 # if lock.acquire():
                 try:
                     MainProcess(link,text,title,self.folderName,message_id,timeStamp)
@@ -498,12 +471,63 @@ class MyThread(threading.Thread):
                 except Exception,e:
                     logger.warning("THREADING EXCEPTION!:%s"%e)
                     # index = index+1
-                    FAIL(self.folderName,link,"Threading exception",timeStamp)
+                    FAIL(self.folderName,link,"Threading exception",message_id)
                 finally:
                     self.queue.task_done()
                     logger.debug( "Exiting " + self.name)
                 print " "
                 # lock.release()
+
+class BadlinkThread(threading.Thread):
+    def __init__(self,queue):
+        super(BadlinkThread, self).__init__()
+        self.badlinkQueue = queue
+
+    def run(self):
+        while True:
+            logger.debug( "start badlink queue")
+            try:
+                messageid_stockid  = self.badlinkQueue.get()
+            except Queue.Empty:
+                logger.debug("badlink queue is empty")
+                break
+            else:
+                try:
+                    messageid = messageid_stockid.keys()[0]
+                    stockID = messageid_stockid.get(messageid)
+                    print "in badlink thread!%s%s"%(messageid,stockID)
+                    with codecs.open("NewsContent/%s/badlink.txt"%stockID, "a","utf-8") as f:
+                        f.write(messageid+'\r\n')
+                    logger.debug("write %s"%messageid)
+                except Exception,e:
+                    logger.info("badlink save Exception:%s"%e)
+                finally:
+                    self.badlinkQueue.task_done()
+
+class MessageIdVisitedThread(threading.Thread):
+    def __init__(self,queue):
+        super(MessageIdVisitedThread, self).__init__()
+        self.messageIdQueue = queue
+
+    def run(self):
+        while True:
+            logger.debug( "start message_id queue")
+            try:
+                messageid_stockid = self.messageIdQueue.get()
+            except Queue.Empty:
+                break
+            else:
+                try:
+                    messageid = messageid_stockid.keys()[0]
+                    stockID = messageid_stockid.get(messageid)
+                    with codecs.open("NewsContent/%s/processId.txt"%stockID, "a","utf-8") as f:
+                        f.write(messageid+'\r\n')
+                except Exception,e:
+                    logger.info("message_id save Exception:%s"%e)
+                finally:
+                    self.messageIdQueue.task_done()
+                    
+
 def getStcokIdNeed(fileName):
     for i in os.listdir(fileName):
         fn = i[0:8]
@@ -531,14 +555,13 @@ class Main():
         if os.path.isfile(fileName):
             os.remove(fileName)
 
-    def getProcessTimeList(self,folderName):
-        processTimeList = []
-        f= codecs.open("NewsContent/%s/processTime.txt"%folderName,'r','utf-8')
-        for line in f:
-            processTimeList.append(line.rstrip())
-        f.close()
-        processTimeList.sort(reverse = True)
-        return processTimeList
+    def getProcessIdList(self,folderName):
+        processIdList = []
+        with codecs.open("NewsContent/%s/processId.txt"%folderName,'r','utf-8') as f:
+            for line in f:
+                processIdList.append(line.rstrip())
+        processIdList.sort(reverse = True)
+        return processIdList
 
     def getBadLinkList(self,folderName):
         badLinkList = []
@@ -547,16 +570,26 @@ class Main():
             # logger.debug("line%s"%line)
             badLinkList.append(line.rstrip())
         f.close()
+        # print badLinkList
         return badLinkList
 
-    def getContinueDict(self,processTimeList,oldDict):
+    def getContinueDict(self,processIdList,oldDict):
         for k,v in oldDict.items():
-            if any(s in v for s in processTimeList):
+            if any(s in k for s in processIdList):
                 oldDict.pop(k)
         return oldDict
 
+    def getAllExceptExitNews(self,stockId,oldDict):
+        txtList = []
+        for i in os.listdir("NewsContent/%s"%stockId):
+            if len(i)==12:
+                txtList.append(i.replace(".txt",""))
+        for k,v in oldDict.items():
+            if any(s in k for s in txtList):
+                oldDict.pop(k)
+        return oldDict
     # 重新过滤失败链接
-    def retry(self,stockIDlist):
+    def retry(self,stockIDlist,force=None):
         global index
         global success
         global fail
@@ -571,20 +604,32 @@ class Main():
             fail = 1
             badlinkDict = {}
             have = self.checkFile("NewsContent/%s/badlink.txt"%folderName)
+            id_TitleTextLinkTime_dict = read(folderName)
             if have:
-                badLinkList = self.getBadLinkList(folderName)
+                
+                if force:
+                    badlinkDict=self.getAllExceptExitNews(folderName,id_TitleTextLinkTime_dict)
+                    logger.info( u"强制重试%s失败链接"%folderName)
+                else:
+                    badLinkList = self.getBadLinkList(folderName)
+                    
+                    for message_id in badLinkList:
+                        try:
+                            badlinkDict[message_id] = id_TitleTextLinkTime_dict[message_id]
+                        except Exception,e:
+                            logger.info(u"重试失败链接异常：%s"%e)
+                            badlinkDict[message_id] = ["None","None","None","None"]
+                    logger.info( u"重试%s失败链接"%folderName)
                 self.removeFile("NewsContent/%s/badlink.txt"%folderName)
-                link_TitleTextIdTime_dict = read(folderName)
-                try:
-                    badlinkDict[link] = link_TitleTextIdTime_dict[link]
-                except Exception,e:
-                    logger.info(u"重试失败链接异常：%s"%e)
-                    badlinkDict[link] = ["None","None","None","None"]
-                logger.info( u"重试%s失败链接"%folderName)
                 parseStockId = ParseStockId(folderName,badlinkDict)
                 parseStockId.passID()
             else:
                 logger.info(u"%s没有badlink文件"%folderName)
+                if force:
+                    badlinkDict=self.getAllExceptExitNews(folderName,id_TitleTextLinkTime_dict)
+                    logger.info( u"强制重试%s失败链接"%folderName)
+                    parseStockId = ParseStockId(folderName,badlinkDict)
+                    parseStockId.passID()
             logger.removeHandler(fh)
 
 
@@ -593,6 +638,7 @@ class Main():
         global index
         global success
         global fail
+        global badlinkQueue
         for folderName in stockIDlist:
             index = 1
             success = 1
@@ -606,18 +652,18 @@ class Main():
             fh.setFormatter(formatter)
             logger.addHandler(fh)
             # 字典为读excel的字典
-            link_TitleTextIdTime_dict = read(folderName)
-            if len(link_TitleTextIdTime_dict.keys())==0:
+            id_TitleTextLinkTime_dict = read(folderName)
+            if len(id_TitleTextLinkTime_dict.keys())==0:
                 logger.info( u"%s股票文件为空,检查下一只股票"%folderName)
                 logger.removeHandler(fh)
                 continue
-            have = self.checkFile('NewsContent/%s/processTime.txt'%folderName)
+            have = self.checkFile('NewsContent/%s/processId.txt'%folderName)
             if have:
                 restDict = {}
-                processTimeList = self.getProcessTimeList(folderName)
+                processIdList = self.getProcessIdList(folderName)
                 # processLastTimeStamp = str(processTimeList[len(processTimeList)-1])
-                # dictLastTimeStamp = str(link_TitleTextIdTime_dict.values()[-1][3])
-                restDict = self.getContinueDict(processTimeList,link_TitleTextIdTime_dict)
+                # dictLastTimeStamp = str(id_TitleTextLinkTime_dict.values()[-1][3])
+                restDict = self.getContinueDict(processIdList,id_TitleTextLinkTime_dict)
                 restDictNum = len(restDict)
                 if restDictNum==0:
                     logger.info( u"%s股票已经爬完,检测下一只股票"%folderName)
@@ -625,11 +671,12 @@ class Main():
                     continue
                 else:
                     logger.info( u"%s股票未爬完,正在继续..."%folderName)
-                    link_TitleTextIdTime_dict = restDict
+                    id_TitleTextLinkTime_dict = restDict
             else:
                 logger.info(u"%s股票并未爬过 开始爬..."%folderName)
                 self.removeFile("NewsContent/%s/badlink.txt"%folderName)
-            parseStockId = ParseStockId(folderName,link_TitleTextIdTime_dict)
+
+            parseStockId = ParseStockId(folderName,id_TitleTextLinkTime_dict)
             parseStockId.passID()
             badLinkList_old = []
             oldindex = 0
@@ -653,13 +700,13 @@ class Main():
                         break
                     self.removeFile("NewsContent/%s/badlink.txt"%folderName)
                     badLinkList_old = badLinkList
-                    link_TitleTextIdTime_dict = read(folderName)
-                    for link in badLinkList:
+                    id_TitleTextLinkTime_dict = read(folderName)
+                    for message_id in badLinkList:
                         try:
-                            badlinkDict[link] = link_TitleTextIdTime_dict[link]
+                            badlinkDict[message_id] = id_TitleTextLinkTime_dict[message_id]
                         except Exception,e:
                             logger.info(u"重试失败链接异常：%s"%e)
-                            badlinkDict[link] = ["None","None","None","None"]
+                            badlinkDict[message_id] = ["None","None","None","None"]
                     logger.info( u"重试%s失败链接"%folderName)
                     parseStockId = ParseStockId(folderName,badlinkDict)
                     parseStockId.passID()
@@ -672,13 +719,52 @@ class Main():
 
 
 if __name__ == '__main__':
-    value = sys.argv[1]
+    badlinkQueue = Queue.Queue()
+    messageIdQueue = Queue.Queue()
+
+    ff = BadlinkThread(badlinkQueue)
+    ff.setDaemon(True)
+    ff.start()
+
+    mt = MessageIdVisitedThread(messageIdQueue)
+    mt.setDaemon(True)
+    mt.start()
+    
+    starttime = datetime.datetime.now()
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-r" ,"--retry", help="retry url in badlink.txt",action="store_true")
+    group.add_argument("-rf", help="delete all badlink.txt and retry by what already download",action="store_true")
+    parser.add_argument("stockId",help="choose one stock to process",nargs='?',type=str)
+    args = parser.parse_args()
+
     stockIDlist = []
     stockIDlist = getStcokIdNeed('NewsLinkText')
     logger.debug(stockIDlist)
     main = Main()
-    if value == "start" or value == "s":
-        main.start(stockIDlist)
-    if value == "retry" or value == "r":
-        NewsContentList = getStcokIdinNewsContent()
+    if args.retry:
+        if args.stockId:
+            NewsContentList = [args.stockId]
+        else:
+            NewsContentList = getStcokIdinNewsContent()
         main.retry(NewsContentList)
+    if args.rf:
+        if args.stockId:
+            NewsContentList = [args.stockId]
+        else:
+            print "force retry"
+            NewsContentList = getStcokIdinNewsContent()
+        main.retry(NewsContentList,"force")
+    else:
+        if args.stockId:
+            stockIDlist = [args.stockId]
+        main.start(stockIDlist)
+
+    print threading.enumerate()
+    badlinkQueue.join()
+    messageIdQueue.join()    
+    
+    endtime = datetime.datetime.now()
+    print "seconds",(endtime - starttime).seconds
+
+
