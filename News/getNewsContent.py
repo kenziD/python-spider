@@ -1,3 +1,4 @@
+
 # coding=utf-8
 """
 功能:从NewsLinkText文件夹中的excel表中读链接，获取相应新闻
@@ -333,7 +334,7 @@ def FAIL(stockID,link,cause,message_id,oldlink = None):
     badlinkQueue.put(messageid_stockid)
     
     messageIdQueue.put(messageid_stockid)
-    logger.info("Index:%s Fail:%s Fail to get %s cause %s is none" %(index,fail,message_id,cause))
+    logger.info("Index:%s Fail:%s Fail to get %s %s cause %s is none" %(index,fail,message_id,link,cause))
     # logger.info("Fail get %s"%link)
     index = index+1
     fail  = fail +1
@@ -495,7 +496,6 @@ class BadlinkThread(threading.Thread):
                 try:
                     messageid = messageid_stockid.keys()[0]
                     stockID = messageid_stockid.get(messageid)
-                    print "in badlink thread!%s%s"%(messageid,stockID)
                     with codecs.open("NewsContent/%s/badlink.txt"%stockID, "a","utf-8") as f:
                         f.write(messageid+'\r\n')
                     logger.debug("write %s"%messageid)
@@ -583,7 +583,12 @@ class Main():
         txtList = []
         for i in os.listdir("NewsContent/%s"%stockId):
             if len(i)==12:
-                txtList.append(i.replace(".txt",""))
+                if i[-3:] == "txt":
+                    txtList.append(i.replace(".txt",""))
+                    
+                elif i[-3:] == "pdf":
+                    txtList.append(i.replace(".pdf",""))
+
         for k,v in oldDict.items():
             if any(s in k for s in txtList):
                 oldDict.pop(k)
@@ -593,6 +598,7 @@ class Main():
         global index
         global success
         global fail
+        global badlinkQueue
         for folderName in stockIDlist:
             dt = time.strftime(format,time.localtime())
             fh = logging.FileHandler('NewsContent'+'/'+folderName+'/'+dt+'.log')
@@ -623,6 +629,8 @@ class Main():
                 self.removeFile("NewsContent/%s/badlink.txt"%folderName)
                 parseStockId = ParseStockId(folderName,badlinkDict)
                 parseStockId.passID()
+                badlinkQueue.join()
+                logger.debug(u"已经join,队列疏通")
             else:
                 logger.info(u"%s没有badlink文件"%folderName)
                 if force:
@@ -630,6 +638,8 @@ class Main():
                     logger.info( u"强制重试%s失败链接"%folderName)
                     parseStockId = ParseStockId(folderName,badlinkDict)
                     parseStockId.passID()
+                    badlinkQueue.join()
+                    logger.debug(u"已经join,队列疏通")
             logger.removeHandler(fh)
 
 
@@ -639,6 +649,7 @@ class Main():
         global success
         global fail
         global badlinkQueue
+        print
         for folderName in stockIDlist:
             index = 1
             success = 1
@@ -678,6 +689,8 @@ class Main():
 
             parseStockId = ParseStockId(folderName,id_TitleTextLinkTime_dict)
             parseStockId.passID()
+            badlinkQueue.join()
+            logger.debug(u"已经join,队列疏通")
             badLinkList_old = []
             oldindex = 0
             oldfail = 1
@@ -710,6 +723,8 @@ class Main():
                     logger.info( u"重试%s失败链接"%folderName)
                     parseStockId = ParseStockId(folderName,badlinkDict)
                     parseStockId.passID()
+                    badlinkQueue.join()
+                    logger.debug(u"已经join,队列疏通")
                     oldindex = index
                     oldfail = fail
                 else:
@@ -747,8 +762,9 @@ if __name__ == '__main__':
             NewsContentList = [args.stockId]
         else:
             NewsContentList = getStcokIdinNewsContent()
+        print NewsContentList
         main.retry(NewsContentList)
-    if args.rf:
+    elif args.rf:
         if args.stockId:
             NewsContentList = [args.stockId]
         else:
@@ -757,6 +773,7 @@ if __name__ == '__main__':
         main.retry(NewsContentList,"force")
     else:
         if args.stockId:
+            
             stockIDlist = [args.stockId]
         main.start(stockIDlist)
 
