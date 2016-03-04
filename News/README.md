@@ -8,7 +8,7 @@
 	python XueqiuNews.py
 	```
 
-	会在所在文件夹生成NewsLinkText文件夹，每个股票会生成相应的xsl文件，xsl文件包含了这个股票的新闻链接，转发量，评论量，新闻简介，时间，时间戳。大概1个小时运行结束。如果运行中断（比如直接关掉终端），再次运行此程序，将接着上次断掉的地方继续。
+	生成NewsLinkText文件夹，每个股票会生成相应的xls文件，如SH600000.xls,包含了这个股票的新闻链接，转发量，评论量，新闻简介，时间，时间戳。大概1个小时运行结束。如果运行中断（比如直接关掉终端），再次运行此程序，会检查每只股票是否已经爬完，没爬完的将接着上次断掉的地方继续。
 
 	运行结束后会自动检查空的股票文件，重新爬虫空文件，直到两次爬得得空文件数量一致。停止。日志信息放在log文件夹内。
 
@@ -38,13 +38,14 @@
 	```	
 	python getNewsContent.py ［stockid]
 	```
-	即
+
+	如
 
 	```
 	python getNewsContent.py SH600000
 	```
 
-	将爬去某个指定id的新闻，如果没有指定id，则爬去NewsLinkText文件夹内的新闻
+	将爬取某个指定id的新闻，如果没有指定id，则爬取NewsLinkText文件夹内的全部新闻
 
 	程序运行过程中，
 	将会在所在文件夹生成NewsContent文件夹，每个股票将生成一个文件夹，相应的新闻以新闻id的名字命名生成txt文件。
@@ -83,20 +84,20 @@ NewsContent
 * 运行
 
 ```
-python getNewsContent.py r [stockid]
+python getNewsContent.py -r [stockid]
 ```
 
 或者
 
 ```
-python getNewsContent.py retry [stockid]
+python getNewsContent.py --retry [stockid]
 ```
 
 如果不加stockid参数，会重新过滤一遍所有股票失败链接。
 
 如果加了stockid参数，过滤指定id的失败链接。
 
-其中的失败链接是从badlink中读取的。
+其中的失败链接是从badlink.txt中读取的。
 
 * 运行
 
@@ -109,14 +110,14 @@ python getNewsContent.py -rf [stockid]
 
 如果加了stockid参数，过滤指定id的失败链接。
 
-其中的失败链接是（全部链接－本地已经下载下来的链接）不从badlink中读取。
+其中的失败链接是（全部链接－本地已经下载下来的链接）不从badlink中读取。用于程序如果在重试失败链接的过程中中断，会导致，badlink.txt内的文件比真正的数目少。这时就不能从badlink.txt读取失败链接了。因为已经不完整了。
 
-*[可选] countnum.py
+* [可选] countnum.py
 
 功能:
 
 输入
-```python countNum.py stockId```
+```python countNum.py [stockId]```
 例如 
 ```python countNum.py SZ000001```
 
@@ -130,10 +131,34 @@ python getNewsContent.py -rf [stockid]
 
 则会自动计算NewsContent文件夹里的所有股票。
 
+* [可选] writecountnum.py
+
+把countnum.py的运行结果写在xls文件里。
 
 * 更新流程
 
 重复运行一遍上述步骤。
 
-先```python XueqiuNews.py```再 ```python getNewsContent.py s```
+先```python XueqiuNews.py```再 ```python getNewsContent.py```
 
+* [补丁]addprocessid.py
+
+因为之前的程序有bug，按理说，爬到本地的新闻加上badlink里的应该等于总和。但有时候不相等。原因是因为多线程共同写一个processtime和badlink文件。导致多线程共同写一个文件时会有复写。使得badlink和processtime.txt里的链接少了，而且时间戳其实并不是独一无二的，url也不是独一无二的（有的是很多个none	），会有重复的链接。
+
+修改的第一步是不存链接和时间戳，改为存新闻的id，这样保证文件本身不会重复。判断起来更精准。
+
+第二步，改为把失败链接单独存入一个队列，用一个线程单独写文件。可以保证文件不会被复写。丢失数据。
+
+所以之前已经下载下来的新闻可以不用删除。
+但是原来的badlink.txt是有丢失的数据的，且新的程序已经弃用通过processtime.txt判断股票是否已经爬完，所以为了原来的数据不被废弃，节省时间，
+先运行
+```
+python addprocessid.py
+```
+这个程序的作用是把已经爬下来的新闻的id放进新的processId.txt用于以后的判断里。
+
+再运行
+```
+python getNewsContent.py -rf
+```
+即删掉原有的badlink.txt,直接下载本地没下载下来的链接，存入新的badlink.txt。
