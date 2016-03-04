@@ -50,7 +50,13 @@ def getExitNewsTXT(stockId):
     txtList = []
     for i in os.listdir("NewsContent/%s"%stockId):
         if len(i)==12:
-            txtList.append(i.replace(".txt",""))
+            if i[-3:] == "txt":
+                txtList.append(i.replace(".txt",""))
+                # print i
+            elif i[-3:] == "pdf":
+                txtList.append(i.replace(".pdf",""))
+                # print i
+
     return txtList
 
 def getBadLink(stockId):
@@ -86,6 +92,8 @@ def diffNum():
         else:
             # print message_idList
             # print processList
+            # print badLinkList
+            # print txtList
             print list(set(message_idList) - set(processList))
             # with open("%s.diff"%stockId,"w") as f:
             #     for i in processList:
